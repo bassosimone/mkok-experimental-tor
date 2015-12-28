@@ -32,9 +32,15 @@ endif
 
 test_main_SOURCES = test/main.cpp
 
+test_network_SOURCES = test/network.cpp
+
 if BUILD_TESTS
     check_PROGRAMS += test/main
     TESTS += test/main
+if BUILD_NETWORK_TESTS
+    check_PROGRAMS += test/network
+    TESTS += test/network
+endif
 endif
 
 run-valgrind:

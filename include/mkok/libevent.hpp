@@ -156,6 +156,7 @@ class Mock {
     XX(bufferevent_write_buffer, int(bufferevent *, evbuffer *));
     XX(evbuffer_free, void(evbuffer *));
     XX(evbuffer_new, evbuffer *());
+    XX(evbuffer_pullup, unsigned char *(evbuffer *, ssize_t));
     XX(event_base_dispatch, int(event_base *));
     XX(event_base_free, void(event_base *));
     XX(event_base_loop, int(event_base *, int));
@@ -190,6 +191,7 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER mockp->bufferevent_write_buffer
 #define MKOK_LIBEVENT_EVBUFFER_FREE mockp->evbuffer_free
 #define MKOK_LIBEVENT_EVBUFFER_NEW mockp->evbuffer_new
+#define MKOK_LIBEVENT_EVBUFFER_PULLUP mockp->evbuffer_pullup
 #define MKOK_LIBEVENT_EVENT_BASE_DISPATCH mockp->event_base_dispatch
 #define MKOK_LIBEVENT_EVENT_BASE_FREE mockp->event_base_free
 #define MKOK_LIBEVENT_EVENT_BASE_LOOP mockp->event_base_loop
@@ -225,6 +227,7 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER ::bufferevent_write_buffer
 #define MKOK_LIBEVENT_EVBUFFER_FREE ::evbuffer_free
 #define MKOK_LIBEVENT_EVBUFFER_NEW ::evbuffer_new
+#define MKOK_LIBEVENT_EVBUFFER_PULLUP ::evbuffer_pullup
 #define MKOK_LIBEVENT_EVENT_BASE_DISPATCH ::event_base_dispatch
 #define MKOK_LIBEVENT_EVENT_BASE_FREE ::event_base_free
 #define MKOK_LIBEVENT_EVENT_BASE_LOOP ::event_base_loop
@@ -383,6 +386,15 @@ class Evbuffer {
     static Var<Evbuffer> create(MKOK_LIBEVENT_MOCKP0) {
         return assign(MKOK_LIBEVENT_MOCKP_NAME MKOK_LIBEVENT_EVBUFFER_NEW(),
                       true);
+    }
+
+    static std::string pullup(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                              ssize_t n) {
+        unsigned char *s = MKOK_LIBEVENT_EVBUFFER_PULLUP(evbuf->evbuf, n);
+        if (s == nullptr) {
+            MKOK_LIBEVENT_THROW(LibeventException);
+        }
+        return std::string((char *) s, ::evbuffer_get_length(evbuf->evbuf));
     }
 };
 

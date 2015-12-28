@@ -9,14 +9,14 @@ matrix:
     - os: linux
       compiler: g++-5
       env: MKOK_CXX=g++-5
-           VALGRIND=yes
+           VALGRIND=--disable-shared
     - os: linux
       compiler: clang-3.6
       env: MKOK_CXX=clang++-3.6
     - os: linux
       compiler: clang-3.6
       env: MKOK_CXX=clang++-3.6
-           VALGRIND=yes
+           VALGRIND=--disable-shared
     - os: linux
       compiler: g++-5
       env: COVERAGE=--enable-coverage
@@ -49,9 +49,9 @@ before_script:
 
 script:
   - autoreconf -i
-  - ./configure -q $COVERAGE
+  - ./configure -q $COVERAGE $VALGRIND
   - make check V=0
-  - if [ "$VALGRIND" = "yes" ]; then
+  - if [ "$VALGRIND" != "" ]; then
       make run-valgrind;
     fi
 

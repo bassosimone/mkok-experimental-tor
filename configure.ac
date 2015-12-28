@@ -6,11 +6,11 @@
 AC_INIT(mkok-libevent-ng, 0.1.0, bassosimone@gmail.com)
 
 echo "==== environment variables ==="
-echo "CXX             : $CXX"
-echo "CPPFLAGS        : $CPPFLAGS"
-echo "CXXFLAGS        : $CXXFLAGS"
-echo "LDFLAGS         : $LDFLAGS"
-echo "LIBS            : $LIBS"
+echo "CXX           : $CXX"
+echo "CPPFLAGS      : $CPPFLAGS"
+echo "CXXFLAGS      : $CXXFLAGS"
+echo "LDFLAGS       : $LDFLAGS"
+echo "LIBS          : $LIBS"
 echo ""
 
 AC_CONFIG_SRCDIR([Makefile.am])
@@ -39,6 +39,12 @@ AM_CONDITIONAL([BUILD_TESTS], [test "$enable_tests" = "yes"])
 AC_ARG_ENABLE([coverage],
     AS_HELP_STRING([--enable-coverage, build for coverage]),
         [enable_coverage=yes], [])
+
+AC_ARG_ENABLE([network-tests],
+    AS_HELP_STRING(
+      [--disable-network-tests, do not build tests requiring network]),
+        [], [enable_network_tests=yes])
+AM_CONDITIONAL([BUILD_NETWORK_TESTS], [test "$enable_network_tests" = "yes"])
 
 # checks for libraries
 
@@ -104,13 +110,17 @@ AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
 
+echo "==== enabled flags ==="
+echo "coverage      : $enable_coverage"
+echo "examples      : $enable_examples"
+echo "network_tests : $enable_network_tests"
+echo "tests         : $enable_tests"
+echo ""
+
 echo "==== configured variables ==="
-echo "CXX             : $CXX"
-echo "CPPFLAGS        : $CPPFLAGS"
-echo "CXXFLAGS        : $CXXFLAGS"
-echo "LDFLAGS         : $LDFLAGS"
-echo "LIBS            : $LIBS"
-echo "enable_coverage : $enable_coverage"
-echo "enable_examples : $enable_examples"
-echo "enable_tests    : $enable_tests"
+echo "CXX           : $CXX"
+echo "CPPFLAGS      : $CPPFLAGS"
+echo "CXXFLAGS      : $CXXFLAGS"
+echo "LDFLAGS       : $LDFLAGS"
+echo "LIBS          : $LIBS"
 echo ""

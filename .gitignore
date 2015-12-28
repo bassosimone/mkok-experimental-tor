@@ -1,7 +1,10 @@
+*.dSYM
 *.gcda
 *.gcno
+*.log
 *.o
 *.swp
+*.trs
 .DS_Store
 .deps
 .dirstamp
@@ -31,5 +34,4 @@ stamp-h1
 test-driver
 test-suite.log
 test/main
-test/main.log
-test/main.trs
+test/network
