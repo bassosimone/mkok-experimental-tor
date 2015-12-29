@@ -85,13 +85,50 @@ TEST_CASE("Var::operator->() returns the pointee") {
     REQUIRE(pointer->field == 42);
 }
 
+// Func
+
+TEST_CASE("Func::Func() creates an empty function") {
+    Func<void()> func;
+    REQUIRE(static_cast<bool>(func) == false);
+}
+
+TEST_CASE("Func::Func(func) works as expected") {
+    bool called = false;
+    Func<void()> func([&called]() { called = true; });
+    REQUIRE(static_cast<bool>(func) == true);
+    func();
+    REQUIRE(called == true);
+}
+
+TEST_CASE("We can assign a std::function to an existing Func") {
+    bool called = false;
+    Func<void()> func;
+    func = [&called]() { called = true; };
+    func();
+    REQUIRE(called == true);
+}
+
 // Evutil
+
+TEST_CASE("We deal with evutil_make_socket_nonblocking success") {
+    Mock mock;
+    mock.evutil_make_socket_nonblocking = [](evutil_socket_t) { return 0; };
+    Evutil::make_socket_nonblocking(&mock, 0);
+}
 
 TEST_CASE("We deal with evutil_make_socket_nonblocking failure") {
     Mock mock;
     mock.evutil_make_socket_nonblocking = [](evutil_socket_t) { return -1; };
     REQUIRE_THROWS_AS(Evutil::make_socket_nonblocking(&mock, 0),
                       LibeventException);
+}
+
+TEST_CASE("We deal with evutil_parse_sockaddr_port success") {
+    Mock mock;
+    mock.evutil_parse_sockaddr_port = [](const char *, sockaddr *, int *) {
+        return 0;
+    };
+    Evutil::parse_sockaddr_port(&mock, "", nullptr, nullptr);
 }
 
 TEST_CASE("We deal with evutil_parse_sockaddr_port failure") {
@@ -101,6 +138,14 @@ TEST_CASE("We deal with evutil_parse_sockaddr_port failure") {
     };
     REQUIRE_THROWS_AS(Evutil::parse_sockaddr_port(&mock, "", nullptr, nullptr),
                       LibeventException);
+}
+
+TEST_CASE("We deal with evutil_make_listen_socket_reuseable success") {
+    Mock mock;
+    mock.evutil_make_listen_socket_reuseable = [](evutil_socket_t) {
+        return 0;
+    };
+    Evutil::make_listen_socket_reuseable(&mock, 0);
 }
 
 TEST_CASE("We deal with evutil_make_listen_socket_reuseable failure") {
