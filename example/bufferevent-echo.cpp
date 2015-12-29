@@ -6,42 +6,15 @@
 #include <event2/bufferevent.h>
 #include <event2/event.h>
 #include <event2/util.h>
+#include <functional>
 #include <mkok/libevent.hpp>
-#include <netinet/in.h>
 #include <stddef.h>
-#include <sys/socket.h>
 #include <sys/time.h>
-#include <unistd.h>
+#include "util.hpp"
 
 int main() {
-
-    // Create listening socket
-
-    evutil_socket_t sock;
-    sockaddr_in sin;
-    sockaddr *sa = (sockaddr *)&sin;
-    int len = sizeof(sin);
-
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) err(1, "socket");
-    Evutil::make_listen_socket_reuseable(sock);
-    Evutil::parse_sockaddr_port("0.0.0.0:54321", sa, &len);
-    if (bind(sock, sa, len)) err(1, "bind");
-    if (listen(sock, 17)) err(1, "listen");
-    Evutil::make_socket_nonblocking(sock);
-
-    warnx("listening...");
-
-    // Prepare to receive a single ACCEPT event
-
-    Var<EventBase> base = EventBase::create();
-    EventBase::once(base, sock, EV_READ, [sock, base](short) {
-        warnx("accept...");
-        evutil_socket_t conn = accept(sock, nullptr, nullptr);
-        if (conn < 0) {
-            warn("accept");
-            return;
-        }
-        Evutil::make_socket_nonblocking(conn);
+    example::util::listen_once_and_dispatch([](Var<EventBase> base,
+                                               evutil_socket_t conn) {
 
         // Deal with I/O events on `conn`
 
@@ -67,14 +40,4 @@ int main() {
         Bufferevent::set_timeouts(bev, &tv, &tv);
         Bufferevent::enable(bev, EV_READ);
     });
-
-    // Dispatch I/O events
-
-    warnx("loop...");
-    EventBase::dispatch(base);
-    warnx("loop... done");
-
-    // Cleanup resources
-
-    close(sock);
 }
