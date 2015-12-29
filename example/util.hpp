@@ -194,6 +194,12 @@ class SslContext {
         ERR_load_crypto_strings();
         SSL_load_error_strings();
         OpenSSL_add_all_algorithms();
+
+        // Note: the code in here is really simple because we only aim to
+        // smoke test the OpenSSL functionality. What is missing here is at
+        // the minimum code to verify the peer certificate. Also we should
+        // not allow SSLv2 (and probably v3) connections, and we should also
+        // probably set SNI for the other end to respond correctly.
         ctx = SSL_CTX_new(SSLv23_client_method());
         if (ctx == nullptr) {
             throw std::exception();
