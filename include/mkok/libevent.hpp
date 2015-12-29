@@ -386,13 +386,17 @@ class Evbuffer {
                       true);
     }
 
+    static size_t get_length(Var<Evbuffer> evbuf) {
+        return ::evbuffer_get_length(evbuf->evbuf);
+    }
+
     static std::string pullup(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
                               ssize_t n) {
         unsigned char *s = MKOK_LIBEVENT_EVBUFFER_PULLUP(evbuf->evbuf, n);
         if (s == nullptr) {
             MKOK_LIBEVENT_THROW(LibeventException);
         }
-        return std::string((char *) s, ::evbuffer_get_length(evbuf->evbuf));
+        return std::string((char *) s, get_length(evbuf));
     }
 };
 
