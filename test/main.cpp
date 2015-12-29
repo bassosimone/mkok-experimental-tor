@@ -319,7 +319,36 @@ TEST_CASE("Evbuffer::drain deals with evbuffer_drain failure") {
     REQUIRE_THROWS_AS(Evbuffer::drain(&mock, evb, 512), LibeventException);
 }
 
+TEST_CASE("Evbuffer::drain correctly deals with evbuffer_drain success") {
+    Mock mock;
+    mock.evbuffer_drain = [](evbuffer *, size_t) {
+        return 0;
+    };
+    Var<Evbuffer> evb = Evbuffer::create(&mock);
+    Evbuffer::drain(&mock, evb, 512);
+}
+
 // Bufferevent
+
+TEST_CASE("Bufferevent::event_string works") {
+    // Only test the (in my opinion) most common flags
+#define XX(flags, string) REQUIRE(Bufferevent::event_string(flags) == string)
+    XX(BEV_EVENT_READING, "reading ");
+    XX(BEV_EVENT_WRITING, "writing ");
+    XX(BEV_EVENT_EOF, "eof ");
+    XX(BEV_EVENT_ERROR, "error ");
+    XX(BEV_EVENT_TIMEOUT, "timeout ");
+    XX(BEV_EVENT_CONNECTED, "connected ");
+    XX(BEV_EVENT_READING|BEV_EVENT_EOF, "reading eof ");
+    XX(BEV_EVENT_WRITING|BEV_EVENT_EOF, "writing eof ");
+    XX(BEV_EVENT_READING|BEV_EVENT_ERROR, "reading error ");
+    XX(BEV_EVENT_WRITING|BEV_EVENT_ERROR, "writing error ");
+    XX(BEV_EVENT_READING|BEV_EVENT_TIMEOUT, "reading timeout ");
+    XX(BEV_EVENT_WRITING|BEV_EVENT_TIMEOUT, "writing timeout ");
+    XX(BEV_EVENT_CONNECTED|BEV_EVENT_TIMEOUT, "connected timeout ");
+    XX(BEV_EVENT_CONNECTED|BEV_EVENT_ERROR, "connected error ");
+#undef XX
+}
 
 TEST_CASE("Bufferevent::socket_new deals with bufferevent_socket_new failure") {
     Mock mock;
@@ -364,6 +393,18 @@ TEST_CASE("Bufferevent::write_buffer deals with bufferevent_write_buffer "
     Var<Evbuffer> evbuf = Evbuffer::create(&mock);
     REQUIRE_THROWS_AS(Bufferevent::write_buffer(&mock, bufev, evbuf),
                       LibeventException);
+}
+
+TEST_CASE("Bufferevent::write_buffer behaves on bufferevent_write_buffer "
+          "success") {
+    Mock mock;
+    mock.bufferevent_write_buffer = [](bufferevent *, evbuffer *) {
+        return 0;
+    };
+    Var<EventBase> evbase = EventBase::create(&mock);
+    Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
+    Var<Evbuffer> evbuf = Evbuffer::create(&mock);
+    Bufferevent::write_buffer(&mock, bufev, evbuf);
 }
 
 TEST_CASE("Bufferevent::read_buffer deals with bufferevent_read_buffer "

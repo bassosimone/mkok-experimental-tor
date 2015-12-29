@@ -30,16 +30,23 @@ static const int FLAGS = BEV_OPT_CLOSE_ON_FREE;
 static bool VERBOSE = false;
 
 static void possibly_print_error(short what, Var<Bufferevent> bev) {
-    if (!VERBOSE) return;
-    std::clog << "tcp: " << Bufferevent::event_string(what) << "\n";
-    if ((what & BEV_EVENT_ERROR) == 0) return;
-    std::clog << "errno: " << strerror(errno) << "\n";
+    // We could bail out immediately if not verbose, but in this case it
+    // makes sense to run more code to increase coverage
+    std::string descr = Bufferevent::event_string(what);
+    if (VERBOSE) {
+        std::clog << "tcp: " << descr << "\n";
+    }
+    if ((what & BEV_EVENT_ERROR) != 0 && VERBOSE) {
+        std::clog << "errno: " << strerror(errno) << "\n";
+    }
     unsigned long error;
     char buffer[1024];
     for (;;) {
         if ((error = Bufferevent::get_openssl_error(bev)) == 0) break;
         ERR_error_string_n(error, buffer, sizeof(buffer));
-        std::clog << "ssl: " << buffer << "\n";
+        if (VERBOSE) {
+            std::clog << "ssl: " << buffer << "\n";
+        }
     }
 }
 
@@ -96,7 +103,7 @@ void sendrecv(Var<EventBase> evbase, Var<Bufferevent> bev, std::string request,
                 Bufferevent::write_buffer(bev, evbuf);
             }
         },
-        nullptr,
+        []() { /* Note to self: this is here to increase coverage */ },
         [bev, evbase, output](short what) {
             possibly_print_error(what, bev);
 
