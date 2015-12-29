@@ -45,7 +45,7 @@ static void sendrecv(Var<EventBase> evbase, Var<Bufferevent> bev,
         Bufferevent::read_buffer(bev, evbuf);
         std::string s = Evbuffer::pullup(evbuf, -1);
         *output += s;
-    }, nullptr, [bev, evbase](short) {
+    }, []() { /* just to increase coverage */ }, [bev, evbase](short) {
         // Clear self reference
         Bufferevent::setcb(bev, nullptr, nullptr, nullptr);
         EventBase::loopbreak(evbase);

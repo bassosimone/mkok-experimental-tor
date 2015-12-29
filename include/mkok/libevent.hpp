@@ -142,7 +142,6 @@ class Mock {
     XX(bufferevent_openssl_filter_new,
        bufferevent *(event_base *, bufferevent *, ssl_st *,
                      bufferevent_ssl_state, int));
-    XX(bufferevent_read, size_t(bufferevent *, void *, size_t));
     XX(bufferevent_read_buffer, int(bufferevent *, evbuffer *));
     XX(bufferevent_setcb,
        void(bufferevent *, bufferevent_data_cb, bufferevent_data_cb,
@@ -180,7 +179,6 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_FREE mockp->bufferevent_free
 #define MKOK_LIBEVENT_BUFFEREVENT_OPENSSL_FILTER_NEW                           \
     mockp->bufferevent_openssl_filter_new
-#define MKOK_LIBEVENT_BUFFEREVENT_READ mockp->bufferevent_read
 #define MKOK_LIBEVENT_BUFFEREVENT_READ_BUFFER mockp->bufferevent_read_buffer
 #define MKOK_LIBEVENT_BUFFEREVENT_SETCB mockp->bufferevent_setcb
 #define MKOK_LIBEVENT_BUFFEREVENT_SET_TIMEOUTS mockp->bufferevent_set_timeouts
@@ -217,7 +215,6 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_FREE ::bufferevent_free
 #define MKOK_LIBEVENT_BUFFEREVENT_OPENSSL_FILTER_NEW                           \
     ::bufferevent_openssl_filter_new
-#define MKOK_LIBEVENT_BUFFEREVENT_READ ::bufferevent_read
 #define MKOK_LIBEVENT_BUFFEREVENT_READ_BUFFER ::bufferevent_read_buffer
 #define MKOK_LIBEVENT_BUFFEREVENT_SETCB ::bufferevent_setcb
 #define MKOK_LIBEVENT_BUFFEREVENT_SET_TIMEOUTS ::bufferevent_set_timeouts
@@ -476,9 +473,8 @@ class Bufferevent {
         }
     }
 
-    static size_t read(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev, void *base,
-                       size_t count) {
-        return MKOK_LIBEVENT_BUFFEREVENT_READ(bev->bevp, base, count);
+    static size_t read(Var<Bufferevent> bev, void *base, size_t count) {
+        return ::bufferevent_read(bev->bevp, base, count);
     }
 
     static void read_buffer(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev,
@@ -548,14 +544,14 @@ class Bufferevent {
         return ::bufferevent_get_openssl_error(bev->bevp);
     }
 
-    Var<Evbuffer> get_input(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev) {
+    static Var<Evbuffer> get_input(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev) {
         return Evbuffer::assign(
-            MKOK_LIBEVENT_MOCKP_NAME::bufferevent_get_input(bev->bevp), false);
+            MKOK_LIBEVENT_MOCKP_NAME bufferevent_get_input(bev->bevp), false);
     }
 
-    Var<Evbuffer> get_output(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev) {
+    static Var<Evbuffer> get_output(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev) {
         return Evbuffer::assign(
-            MKOK_LIBEVENT_MOCKP_NAME::bufferevent_get_output(bev->bevp), false);
+            MKOK_LIBEVENT_MOCKP_NAME bufferevent_get_output(bev->bevp), false);
     }
 };
 
