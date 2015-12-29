@@ -69,6 +69,29 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
     REQUIRE(output != "");
 }
 
+static void ssl_connect(Var<EventBase> evbase, const char *endpoint,
+                        bool *isconn, bool *ssl_isconn, SSL_CTX *context,
+                        std::function<void(Var<Bufferevent>)> callback) {
+    connect(evbase, endpoint, isconn,
+        [callback, context, evbase, ssl_isconn](Var<Bufferevent> bev) {
+            SSL *secure = SSL_new(context);
+            REQUIRE(secure != nullptr);
+            auto ssl_bev = Bufferevent::openssl_filter_new(
+                evbase, bev, secure, BUFFEREVENT_SSL_CONNECTING, kFlags);
+            Bufferevent::setcb(ssl_bev, nullptr, nullptr,
+                [callback, evbase, ssl_bev, ssl_isconn](short what) {
+                    if (what != BEV_EVENT_CONNECTED) {
+                        // Clear self reference
+                        Bufferevent::setcb(ssl_bev, nullptr, nullptr, nullptr);
+                        EventBase::loopbreak(evbase);
+                        return;
+                    }
+                    *ssl_isconn = true;
+                    callback(ssl_bev);
+                });
+        });
+}
+
 TEST_CASE("Retrieve HTTPS resource using bufferevent") {
     SSL_library_init();
     ERR_load_crypto_strings();
@@ -78,34 +101,19 @@ TEST_CASE("Retrieve HTTPS resource using bufferevent") {
     REQUIRE(ctx != nullptr);
 
     bool connected = false;
-    bool ssl_conn = false;
-    bool *pssl_conn = &ssl_conn;
+    bool ssl_connected = false;
     std::string output;
     std::string *po = &output;
 
     Var<EventBase> evbase = EventBase::create();
-    connect(evbase, "38.229.72.16:443", &connected,
-        [ctx, evbase, po, pssl_conn](Var<Bufferevent> bev) {
-            SSL *secure = SSL_new(ctx);
-            REQUIRE(secure != nullptr);
-            auto bev2 = Bufferevent::openssl_filter_new(
-                evbase, bev, secure, BUFFEREVENT_SSL_CONNECTING, kFlags);
-            Bufferevent::setcb(bev2, nullptr, nullptr,
-                [evbase, bev2, po, pssl_conn](short what) {
-                    if (what != BEV_EVENT_CONNECTED) {
-                        // Clear self reference
-                        Bufferevent::setcb(bev2, nullptr, nullptr, nullptr);
-                        EventBase::loopbreak(evbase);
-                        return;
-                    }
-                    *pssl_conn = true;
-                    sendrecv(evbase, bev2, kRequest, po);
+    ssl_connect(evbase, "38.229.72.16:443", &connected, &ssl_connected, ctx,
+                [evbase, po](Var<Bufferevent> bev) {
+                    sendrecv(evbase, bev, kRequest, po);
                 });
-        });
     EventBase::dispatch(evbase);
 
     REQUIRE(connected == true);
-    REQUIRE(ssl_conn == true);
+    REQUIRE(ssl_connected == true);
     REQUIRE(output != "");
     SSL_CTX_free(ctx);
 
