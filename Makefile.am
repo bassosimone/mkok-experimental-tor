@@ -43,8 +43,10 @@ if BUILD_NETWORK_TESTS
 endif
 endif
 
-run-valgrind:
+VALGRIND = valgrind --trace-children=yes --error-exitcode=1 \
+                    --dsymutil=yes --leak-check=yes
+
+run-valgrind: $(check_PROGRAMS)
 	for test_name in $(TESTS); do                                          \
-	  valgrind --trace-children=yes --error-exitcode=1                     \
-	           --dsymutil=yes --leak-check=yes $$test_name;                \
+	  $(VALGRIND) $$test_name || exit 1;                                   \
 	done

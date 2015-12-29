@@ -51,9 +51,10 @@ before_script:
 script:
   - autoreconf -i
   - ./configure -q $COVERAGE $VALGRIND
-  - make check V=0
   - if [ "$VALGRIND" != "" ]; then
-      make run-valgrind;
+      make run-valgrind V=0;
+    else
+      make check V=0;
     fi
 
 after_script:

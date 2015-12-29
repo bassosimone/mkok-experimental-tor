@@ -338,6 +338,7 @@ class EventBase {
         if (MKOK_LIBEVENT_EVENT_BASE_ONCE(base->evbase, sock, what,
                                           mkok_libevent_event_cb, func,
                                           timeo) != 0) {
+            delete func;
             MKOK_LIBEVENT_THROW(LibeventException);
         }
     }

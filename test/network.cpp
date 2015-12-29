@@ -7,7 +7,7 @@
 #include "example/util.hpp"
 #include "test/catch.hpp"
 
-static const char *kRequest = "GET /robots.txt HTTP/1.0\r\n\r\n";
+static const char *REQUEST = "GET /robots.txt HTTP/1.0\r\n\r\n";
 
 TEST_CASE("Retrieve HTTP resource using bufferevent") {
     bool connected = false;
@@ -16,7 +16,7 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
     Var<EventBase> evbase = EventBase::create();
     example::util::connect(
         evbase, "130.192.16.172:80", [evbase, po](Var<Bufferevent> bev) {
-            example::util::sendrecv(evbase, bev, kRequest, po);
+            example::util::sendrecv(evbase, bev, REQUEST, po);
         }, &connected);
     EventBase::dispatch(evbase);
     REQUIRE(connected == true);
@@ -45,9 +45,9 @@ TEST_CASE("Retrieve HTTPS resource using bufferevent") {
 
     Var<EventBase> evbase = EventBase::create();
     example::util::ssl_connect(
-        evbase, "130.192.16.172:443",
+        evbase, "38.229.72.16:443",
         example::util::SslContext::get(), [evbase, po](Var<Bufferevent> bev) {
-            example::util::sendrecv(evbase, bev, kRequest, po);
+            example::util::sendrecv(evbase, bev, REQUEST, po);
         }, &connected, &ssl_connected);
     EventBase::dispatch(evbase);
 

@@ -117,11 +117,10 @@ make check V=0
 ### Running regress tests using Valgrind
 
 To force the test suite to run through [Valgrind](http://valgrind.org/) (to
-check for common memory errors such as use-after-free), after you've run `make
-check V=0`, you should additionally run:
+check for common memory errors such as use-after-free), run:
 
 ```
-make run-valgrind
+make run-valgrind V=0
 ```
 
 Of course, this requires Valgrind to be installed. (Note that
