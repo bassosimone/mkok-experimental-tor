@@ -58,5 +58,7 @@ script:
 
 after_script:
   - if [ "$GCOV" != "" ]; then
-      coveralls --gcov $(which $GCOV) --include include/mkok;
+      coveralls --gcov $(which $GCOV) --gcov-options '\-lp'
+                --exclude test/catch.hpp --exclude example/
+                --exclude config.h;
     fi
