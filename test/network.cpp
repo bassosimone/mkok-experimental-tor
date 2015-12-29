@@ -69,6 +69,20 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
     REQUIRE(output != "");
 }
 
+TEST_CASE("Connect to closed port using bufferevent") {
+    bool connected = false;
+    std::string output;
+    std::string *po = &output;
+    Var<EventBase> evbase = EventBase::create();
+    connect(evbase, "130.192.91.211:88", &connected,
+        [evbase](Var<Bufferevent>) {
+            EventBase::loopbreak(evbase);
+        });
+    EventBase::dispatch(evbase);
+    REQUIRE(output == "");
+    REQUIRE(connected == false);
+}
+
 static void ssl_connect(Var<EventBase> evbase, const char *endpoint,
                         bool *isconn, bool *ssl_isconn, SSL_CTX *context,
                         std::function<void(Var<Bufferevent>)> callback) {
@@ -92,22 +106,39 @@ static void ssl_connect(Var<EventBase> evbase, const char *endpoint,
         });
 }
 
-TEST_CASE("Retrieve HTTPS resource using bufferevent") {
-    SSL_library_init();
-    ERR_load_crypto_strings();
-    SSL_load_error_strings();
-    OpenSSL_add_all_algorithms();
-    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
-    REQUIRE(ctx != nullptr);
+class Context {
+  public:
+    static SSL_CTX *get() {
+        static Context singleton;
+        return singleton.ctx;
+    }
 
+  private:
+    Context() {
+        SSL_library_init();
+        ERR_load_crypto_strings();
+        SSL_load_error_strings();
+        OpenSSL_add_all_algorithms();
+        ctx = SSL_CTX_new(SSLv23_client_method());
+        REQUIRE(ctx != nullptr);
+    }
+
+    ~Context() {
+        SSL_CTX_free(ctx);
+    }
+
+    SSL_CTX *ctx = nullptr;
+};
+
+TEST_CASE("Retrieve HTTPS resource using bufferevent") {
     bool connected = false;
     bool ssl_connected = false;
     std::string output;
     std::string *po = &output;
 
     Var<EventBase> evbase = EventBase::create();
-    ssl_connect(evbase, "38.229.72.16:443", &connected, &ssl_connected, ctx,
-                [evbase, po](Var<Bufferevent> bev) {
+    ssl_connect(evbase, "38.229.72.16:443", &connected, &ssl_connected,
+                Context::get(), [evbase, po](Var<Bufferevent> bev) {
                     sendrecv(evbase, bev, kRequest, po);
                 });
     EventBase::dispatch(evbase);
@@ -115,13 +146,22 @@ TEST_CASE("Retrieve HTTPS resource using bufferevent") {
     REQUIRE(connected == true);
     REQUIRE(ssl_connected == true);
     REQUIRE(output != "");
-    SSL_CTX_free(ctx);
+}
 
-    CONF_modules_free();
-    ERR_remove_state(0);
-    ENGINE_cleanup();
-    CONF_modules_unload(1);
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
+TEST_CASE("Connect to port where SSL is not active") {
+    bool connected = false;
+    bool ssl_connected = false;
+    std::string output;
+    std::string *po = &output;
+
+    Var<EventBase> evbase = EventBase::create();
+    ssl_connect(evbase, "130.192.16.172:80", &connected, &ssl_connected,
+                Context::get(), [evbase](Var<Bufferevent>) {
+                    EventBase::loopbreak(evbase);
+                });
+    EventBase::dispatch(evbase);
+
+    REQUIRE(connected == true);
+    REQUIRE(ssl_connected == false);
+    REQUIRE(output == "");
 }
