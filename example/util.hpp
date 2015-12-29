@@ -205,6 +205,7 @@ class SslContext {
     SSL_CTX *ctx = nullptr;
 };
 
+#ifdef EXAMPLE_UTIL_WANT_LISTEN_ONCE_AND_DISPATCH
 void listen_once_and_dispatch(
     std::function<void(Var<EventBase>, evutil_socket_t)> callback);
 
@@ -254,6 +255,7 @@ void listen_once_and_dispatch(
 
     close(sock);
 }
+#endif // EXAMPLE_UTIL_WANT_LISTEN_ONCE_AND_DISPATCH
 
 } // namespace util
 } // namespace example
