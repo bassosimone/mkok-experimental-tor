@@ -15,47 +15,52 @@ TEST_CASE("Exception default constructor works") {
     REQUIRE(exc.file == "");
     REQUIRE(exc.line == 0);
     REQUIRE(exc.func == "");
-    REQUIRE(exc.error == MKOK_LIBEVENT_GENERIC_ERROR);
+    REQUIRE(exc.error == Error::GENERIC);
 }
 
-TEST_CASE("Exception custom constructor works") {
-    Exception exc("A", 17, "B", MKOK_LIBEVENT_LIBEVENT_ERROR);
-    REQUIRE(exc.file == "A");
-    REQUIRE(exc.line == 17);
-    REQUIRE(exc.func == "B");
-    REQUIRE(exc.error == MKOK_LIBEVENT_LIBEVENT_ERROR);
-}
-
-TEST_CASE("NoException constructor works") {
-    NoException exc("A", 17, "B");
-    REQUIRE(exc.file == "A");
-    REQUIRE(exc.line == 17);
-    REQUIRE(exc.func == "B");
-    REQUIRE(exc.error == MKOK_LIBEVENT_NO_ERROR);
-}
-
-TEST_CASE("GenericException constructor works") {
-    GenericException exc("A", 17, "B");
-    REQUIRE(exc.file == "A");
-    REQUIRE(exc.line == 17);
-    REQUIRE(exc.func == "B");
-    REQUIRE(exc.error == MKOK_LIBEVENT_GENERIC_ERROR);
-}
-
-TEST_CASE("NullPointerException constructor works") {
-    NullPointerException exc("A", 17, "B");
-    REQUIRE(exc.file == "A");
-    REQUIRE(exc.line == 17);
-    REQUIRE(exc.func == "B");
-    REQUIRE(exc.error == MKOK_LIBEVENT_NULL_POINTER_ERROR);
-}
-
-TEST_CASE("LibeventException constructor works") {
-    LibeventException exc("A", 17, "B");
-    REQUIRE(exc.file == "A");
-    REQUIRE(exc.line == 17);
-    REQUIRE(exc.func == "B");
-    REQUIRE(exc.error == MKOK_LIBEVENT_LIBEVENT_ERROR);
+TEST_CASE("The exception mechanism works as expected") {
+#define XX(exc_name, err_name)                                                 \
+    SECTION("" #exc_name " constructor works") {                               \
+        exc_name exc("A", 17, "B");                                            \
+        REQUIRE(exc.file == "A");                                              \
+        REQUIRE(exc.line == 17);                                               \
+        REQUIRE(exc.func == "B");                                              \
+        REQUIRE(exc.error == Error::err_name);                                 \
+    }                                                                          \
+                                                                               \
+    SECTION("Exception throwing works for " #exc_name "") {                    \
+        try {                                                                  \
+            MKOK_LIBEVENT_THROW(exc_name);                                     \
+        } catch (Exception & exc) {                                            \
+            REQUIRE(exc.file == __FILE__);                                     \
+            REQUIRE(exc.line == __LINE__);                                     \
+            REQUIRE(exc.func == __func__);                                     \
+            REQUIRE(exc.error == Error::err_name);                             \
+        }                                                                      \
+    }
+    XX(NoException, NO_ERROR);
+    XX(GenericException, GENERIC);
+    XX(NullPointerException, NULL_POINTER);
+    XX(EvutilMakeSocketNonblockingException, EVUTIL_MAKE_SOCKET_NONBLOCKING);
+    XX(EvutilParseSockaddrPortException, EVUTIL_PARSE_SOCKADDR_PORT);
+    XX(EvutilMakeListenSocketReuseableException,
+       EVUTIL_MAKE_LISTEN_SOCKET_REUSEABLE);
+    XX(EventBaseDispatchException, EVENT_BASE_DISPATCH);
+    XX(EventBaseLoopException, EVENT_BASE_LOOP);
+    XX(EventBaseLoopbreakException, EVENT_BASE_LOOPBREAK);
+    XX(EventBaseOnceException, EVENT_BASE_ONCE);
+    XX(EvbufferPullupException, EVBUFFER_PULLUP);
+    XX(EvbufferDrainException, EVBUFFER_DRAIN);
+    XX(BuffereventSocketNewException, BUFFEREVENT_SOCKET_NEW);
+    XX(BuffereventSocketConnectException, BUFFEREVENT_SOCKET_CONNECT);
+    XX(BuffereventWriteException, BUFFEREVENT_WRITE);
+    XX(BuffereventWriteBufferException, BUFFEREVENT_WRITE_BUFFER);
+    XX(BuffereventReadBufferException, BUFFEREVENT_READ_BUFFER);
+    XX(BuffereventEnableException, BUFFEREVENT_ENABLE);
+    XX(BuffereventDisableException, BUFFEREVENT_DISABLE);
+    XX(BuffereventSetTimeoutsException, BUFFEREVENT_SET_TIMEOUTS);
+    XX(BuffereventOpensslFilterNewException, BUFFEREVENT_OPENSSL_FILTER_NEW);
+#undef XX
 }
 
 // Var
@@ -125,7 +130,7 @@ TEST_CASE("We deal with evutil_make_socket_nonblocking failure") {
     Mock mock;
     mock.evutil_make_socket_nonblocking = [](evutil_socket_t) { return -1; };
     REQUIRE_THROWS_AS(Evutil::make_socket_nonblocking(&mock, 0),
-                      LibeventException);
+                      EvutilMakeSocketNonblockingException);
 }
 
 TEST_CASE("We deal with evutil_parse_sockaddr_port success") {
@@ -142,7 +147,7 @@ TEST_CASE("We deal with evutil_parse_sockaddr_port failure") {
         return -1;
     };
     REQUIRE_THROWS_AS(Evutil::parse_sockaddr_port(&mock, "", nullptr, nullptr),
-                      LibeventException);
+                      EvutilParseSockaddrPortException);
 }
 
 TEST_CASE("We deal with evutil_make_listen_socket_reuseable success") {
@@ -159,7 +164,7 @@ TEST_CASE("We deal with evutil_make_listen_socket_reuseable failure") {
         return -1;
     };
     REQUIRE_THROWS_AS(Evutil::make_listen_socket_reuseable(&mock, 0),
-                      LibeventException);
+                      EvutilMakeListenSocketReuseableException);
 }
 
 // EventBase
@@ -206,7 +211,7 @@ TEST_CASE("EventBase calls destructor if owned is true") {
 TEST_CASE("EventBase::assign throws if passed a nullptr") {
     Mock mock;
     REQUIRE_THROWS_AS(EventBase::assign(&mock, nullptr, true),
-                      NullPointerException); 
+                      NullPointerException);
 }
 
 TEST_CASE("EventBase::create deals with event_base_new() failure") {
@@ -242,7 +247,8 @@ TEST_CASE("EventBase::dispatch deals with event_base_dispatch() failure") {
     Mock mock;
     mock.event_base_dispatch = [](event_base *) { return -1; };
     Var<EventBase> evb = EventBase::create(&mock);
-    REQUIRE_THROWS_AS(EventBase::dispatch(&mock, evb), LibeventException);
+    REQUIRE_THROWS_AS(EventBase::dispatch(&mock, evb),
+                      EventBaseDispatchException);
 }
 
 TEST_CASE("EventBase::loop deals with event_base_loop() returning 0") {
@@ -263,25 +269,26 @@ TEST_CASE("EventBase::loop deals with event_base_loop() failure") {
     Mock mock;
     mock.event_base_loop = [](event_base *, int) { return -1; };
     Var<EventBase> evb = EventBase::create(&mock);
-    REQUIRE_THROWS_AS(EventBase::loop(&mock, evb, 0), LibeventException);
+    REQUIRE_THROWS_AS(EventBase::loop(&mock, evb, 0), EventBaseLoopException);
 }
 
 TEST_CASE("EventBase::loopbreak deals with event_base_loopbreak() failure") {
     Mock mock;
     mock.event_base_loopbreak = [](event_base *) { return -1; };
     Var<EventBase> evb = EventBase::create(&mock);
-    REQUIRE_THROWS_AS(EventBase::loopbreak(&mock, evb), LibeventException);
+    REQUIRE_THROWS_AS(EventBase::loopbreak(&mock, evb),
+                      EventBaseLoopbreakException);
 }
 
 TEST_CASE("EventBase::once deals with event_base_once() failure") {
     Mock mock;
     mock.event_base_once = [](event_base *, evutil_socket_t, short,
-                              event_callback_fn, void *, const timeval *) {
-                                  return -1;
-                              };
+                              event_callback_fn, void *,
+                              const timeval *) { return -1; };
     Var<EventBase> evb = EventBase::create(&mock);
-    REQUIRE_THROWS_AS(EventBase::once(&mock, evb, 0, EV_TIMEOUT, nullptr,
-                                      nullptr), LibeventException);
+    REQUIRE_THROWS_AS(
+        EventBase::once(&mock, evb, 0, EV_TIMEOUT, nullptr, nullptr),
+        EventBaseOnceException);
 }
 
 // Evbuffer
@@ -304,26 +311,23 @@ TEST_CASE("Evbuffer::assign correctly sets mock") {
 TEST_CASE("Evbuffer::pullup deals with evbuffer_pullup failure") {
     Mock mock;
     mock.evbuffer_pullup = [](evbuffer *, ssize_t) {
-        return (unsigned char *) nullptr;
+        return (unsigned char *)nullptr;
     };
     Var<Evbuffer> evb = Evbuffer::create(&mock);
-    REQUIRE_THROWS_AS(Evbuffer::pullup(&mock, evb, -1), LibeventException);
+    REQUIRE_THROWS_AS(Evbuffer::pullup(&mock, evb, -1),
+                      EvbufferPullupException);
 }
 
 TEST_CASE("Evbuffer::drain deals with evbuffer_drain failure") {
     Mock mock;
-    mock.evbuffer_drain = [](evbuffer *, size_t) {
-        return -1;
-    };
+    mock.evbuffer_drain = [](evbuffer *, size_t) { return -1; };
     Var<Evbuffer> evb = Evbuffer::create(&mock);
-    REQUIRE_THROWS_AS(Evbuffer::drain(&mock, evb, 512), LibeventException);
+    REQUIRE_THROWS_AS(Evbuffer::drain(&mock, evb, 512), EvbufferDrainException);
 }
 
 TEST_CASE("Evbuffer::drain correctly deals with evbuffer_drain success") {
     Mock mock;
-    mock.evbuffer_drain = [](evbuffer *, size_t) {
-        return 0;
-    };
+    mock.evbuffer_drain = [](evbuffer *, size_t) { return 0; };
     Var<Evbuffer> evb = Evbuffer::create(&mock);
     Evbuffer::drain(&mock, evb, 512);
 }
@@ -331,7 +335,7 @@ TEST_CASE("Evbuffer::drain correctly deals with evbuffer_drain success") {
 // Bufferevent
 
 TEST_CASE("Bufferevent::event_string works") {
-    // Only test the (in my opinion) most common flags
+// Only test the (in my opinion) most common flags
 #define XX(flags, string) REQUIRE(Bufferevent::event_string(flags) == string)
     XX(BEV_EVENT_READING, "reading ");
     XX(BEV_EVENT_WRITING, "writing ");
@@ -339,24 +343,25 @@ TEST_CASE("Bufferevent::event_string works") {
     XX(BEV_EVENT_ERROR, "error ");
     XX(BEV_EVENT_TIMEOUT, "timeout ");
     XX(BEV_EVENT_CONNECTED, "connected ");
-    XX(BEV_EVENT_READING|BEV_EVENT_EOF, "reading eof ");
-    XX(BEV_EVENT_WRITING|BEV_EVENT_EOF, "writing eof ");
-    XX(BEV_EVENT_READING|BEV_EVENT_ERROR, "reading error ");
-    XX(BEV_EVENT_WRITING|BEV_EVENT_ERROR, "writing error ");
-    XX(BEV_EVENT_READING|BEV_EVENT_TIMEOUT, "reading timeout ");
-    XX(BEV_EVENT_WRITING|BEV_EVENT_TIMEOUT, "writing timeout ");
-    XX(BEV_EVENT_CONNECTED|BEV_EVENT_TIMEOUT, "connected timeout ");
-    XX(BEV_EVENT_CONNECTED|BEV_EVENT_ERROR, "connected error ");
+    XX(BEV_EVENT_READING | BEV_EVENT_EOF, "reading eof ");
+    XX(BEV_EVENT_WRITING | BEV_EVENT_EOF, "writing eof ");
+    XX(BEV_EVENT_READING | BEV_EVENT_ERROR, "reading error ");
+    XX(BEV_EVENT_WRITING | BEV_EVENT_ERROR, "writing error ");
+    XX(BEV_EVENT_READING | BEV_EVENT_TIMEOUT, "reading timeout ");
+    XX(BEV_EVENT_WRITING | BEV_EVENT_TIMEOUT, "writing timeout ");
+    XX(BEV_EVENT_CONNECTED | BEV_EVENT_TIMEOUT, "connected timeout ");
+    XX(BEV_EVENT_CONNECTED | BEV_EVENT_ERROR, "connected error ");
 #undef XX
 }
 
 TEST_CASE("Bufferevent::socket_new deals with bufferevent_socket_new failure") {
     Mock mock;
     mock.bufferevent_socket_new = [](event_base *, evutil_socket_t, int) {
-        return (bufferevent *) nullptr;
+        return (bufferevent *)nullptr;
     };
-    REQUIRE_THROWS_AS(Bufferevent::socket_new(&mock, EventBase::create(&mock),
-                                              -1, 0), LibeventException);
+    REQUIRE_THROWS_AS(
+        Bufferevent::socket_new(&mock, EventBase::create(&mock), -1, 0),
+        BuffereventSocketNewException);
 }
 
 TEST_CASE("Bufferevent::socket_connect deals with bufferevent_socket_connect "
@@ -368,7 +373,7 @@ TEST_CASE("Bufferevent::socket_connect deals with bufferevent_socket_connect "
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     REQUIRE_THROWS_AS(Bufferevent::socket_connect(&mock, bufev, nullptr, 0),
-                      LibeventException);
+                      BuffereventSocketConnectException);
 }
 
 TEST_CASE("Bufferevent::write deals with bufferevent_write failure") {
@@ -379,7 +384,7 @@ TEST_CASE("Bufferevent::write deals with bufferevent_write failure") {
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     REQUIRE_THROWS_AS(Bufferevent::write(&mock, bufev, nullptr, 0),
-                      LibeventException);
+                      BuffereventWriteException);
 }
 
 TEST_CASE("Bufferevent::write_buffer deals with bufferevent_write_buffer "
@@ -392,15 +397,13 @@ TEST_CASE("Bufferevent::write_buffer deals with bufferevent_write_buffer "
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     Var<Evbuffer> evbuf = Evbuffer::create(&mock);
     REQUIRE_THROWS_AS(Bufferevent::write_buffer(&mock, bufev, evbuf),
-                      LibeventException);
+                      BuffereventWriteBufferException);
 }
 
 TEST_CASE("Bufferevent::write_buffer behaves on bufferevent_write_buffer "
           "success") {
     Mock mock;
-    mock.bufferevent_write_buffer = [](bufferevent *, evbuffer *) {
-        return 0;
-    };
+    mock.bufferevent_write_buffer = [](bufferevent *, evbuffer *) { return 0; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     Var<Evbuffer> evbuf = Evbuffer::create(&mock);
@@ -410,32 +413,26 @@ TEST_CASE("Bufferevent::write_buffer behaves on bufferevent_write_buffer "
 TEST_CASE("Bufferevent::read_buffer deals with bufferevent_read_buffer "
           "failure") {
     Mock mock;
-    mock.bufferevent_read_buffer = [](bufferevent *, evbuffer *) {
-        return -1;
-    };
+    mock.bufferevent_read_buffer = [](bufferevent *, evbuffer *) { return -1; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     Var<Evbuffer> evbuf = Evbuffer::create(&mock);
     REQUIRE_THROWS_AS(Bufferevent::read_buffer(&mock, bufev, evbuf),
-                      LibeventException);
+                      BuffereventReadBufferException);
 }
 
 TEST_CASE("Bufferevent::enable deals with bufferevent_enable failure") {
     Mock mock;
-    mock.bufferevent_enable = [](bufferevent *, int) {
-        return -1;
-    };
+    mock.bufferevent_enable = [](bufferevent *, int) { return -1; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     REQUIRE_THROWS_AS(Bufferevent::enable(&mock, bufev, EV_READ),
-                      LibeventException);
+                      BuffereventEnableException);
 }
 
 TEST_CASE("Bufferevent::enable deals with successful bufferevent_enable") {
     Mock mock;
-    mock.bufferevent_enable = [](bufferevent *, int) {
-        return 0;
-    };
+    mock.bufferevent_enable = [](bufferevent *, int) { return 0; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     Bufferevent::enable(&mock, bufev, EV_READ);
@@ -443,20 +440,16 @@ TEST_CASE("Bufferevent::enable deals with successful bufferevent_enable") {
 
 TEST_CASE("Bufferevent::disable deals with bufferevent_disable failure") {
     Mock mock;
-    mock.bufferevent_disable = [](bufferevent *, int) {
-        return -1;
-    };
+    mock.bufferevent_disable = [](bufferevent *, int) { return -1; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     REQUIRE_THROWS_AS(Bufferevent::disable(&mock, bufev, EV_READ),
-                      LibeventException);
+                      BuffereventDisableException);
 }
 
 TEST_CASE("Bufferevent::disable deals with successful bufferevent_disable") {
     Mock mock;
-    mock.bufferevent_disable = [](bufferevent *, int) {
-        return 0;
-    };
+    mock.bufferevent_disable = [](bufferevent *, int) { return 0; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     Bufferevent::disable(&mock, bufev, EV_READ);
@@ -466,30 +459,26 @@ TEST_CASE("Bufferevent::set_timeouts deals with bufferevent_set_timeouts "
           "failure") {
     Mock mock;
     mock.bufferevent_set_timeouts = [](bufferevent *, const timeval *,
-                                       const timeval *) {
-                                           return -1;
-                                       };
+                                       const timeval *) { return -1; };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
     REQUIRE_THROWS_AS(Bufferevent::set_timeouts(&mock, bufev, nullptr, nullptr),
-                      LibeventException);
+                      BuffereventSetTimeoutsException);
 }
 
 TEST_CASE("Bufferevent::openssl_filter_new deals with "
           "bufferevent_openssl_filter_new failure") {
     Mock mock;
-    mock.bufferevent_openssl_filter_new = [](event_base *, bufferevent *,
-                                             SSL *, enum bufferevent_ssl_state,
-                                             int) {
-                                                 return (bufferevent *) nullptr;
-                                             };
+    mock.bufferevent_openssl_filter_new = [](event_base *, bufferevent *, SSL *,
+                                             enum bufferevent_ssl_state, int) {
+        return (bufferevent *)nullptr;
+    };
     Var<EventBase> evbase = EventBase::create(&mock);
     Var<Bufferevent> bufev = Bufferevent::socket_new(&mock, evbase, -1, 0);
-    REQUIRE_THROWS_AS(Bufferevent::openssl_filter_new(&mock, evbase,
-                                                      bufev, nullptr,
-                                                      BUFFEREVENT_SSL_OPEN,
-                                                      0),
-                      LibeventException);
+    REQUIRE_THROWS_AS(Bufferevent::openssl_filter_new(&mock, evbase, bufev,
+                                                      nullptr,
+                                                      BUFFEREVENT_SSL_OPEN, 0),
+                      BuffereventOpensslFilterNewException);
 }
 
 TEST_CASE("Evbuffer destructor not called for Evbuffer returned by "
