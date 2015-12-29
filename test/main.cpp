@@ -108,6 +108,11 @@ TEST_CASE("We can assign a std::function to an existing Func") {
     REQUIRE(called == true);
 }
 
+TEST_CASE("We can assign nullptr to an existing Func") {
+    Func<void()> func;
+    func = nullptr;
+}
+
 // Evutil
 
 TEST_CASE("We deal with evutil_make_socket_nonblocking success") {
@@ -198,7 +203,7 @@ TEST_CASE("EventBase calls destructor if owned is true") {
     REQUIRE(was_called);
 }
 
-TEST_CASE("EventBase::assign throws is passed a nullptr") {
+TEST_CASE("EventBase::assign throws if passed a nullptr") {
     Mock mock;
     REQUIRE_THROWS_AS(EventBase::assign(&mock, nullptr, true),
                       NullPointerException); 
@@ -208,4 +213,66 @@ TEST_CASE("EventBase::create deals with event_base_new() failure") {
     Mock mock;
     mock.event_base_new = []() -> event_base * { return nullptr; };
     REQUIRE_THROWS_AS(EventBase::create(&mock), NullPointerException);
+}
+
+TEST_CASE("EventBase::assign correctly sets mock") {
+    bool called = false;
+    Mock mock;
+    mock.event_base_free = [&called](event_base *) { called = true; };
+    Var<EventBase> evb = EventBase::assign(&mock, (event_base *)17, true);
+    evb = nullptr;
+    REQUIRE(called == true);
+}
+
+TEST_CASE("EventBase::dispatch deals with event_base_dispatch() returning 0") {
+    Mock mock;
+    mock.event_base_dispatch = [](event_base *) { return 0; };
+    Var<EventBase> evb = EventBase::create(&mock);
+    EventBase::dispatch(&mock, evb);
+}
+
+TEST_CASE("EventBase::dispatch deals with event_base_dispatch() returning 1") {
+    Mock mock;
+    mock.event_base_dispatch = [](event_base *) { return 1; };
+    Var<EventBase> evb = EventBase::create(&mock);
+    EventBase::dispatch(&mock, evb);
+}
+
+TEST_CASE("EventBase::dispatch deals with event_base_dispatch() failure") {
+    Mock mock;
+    mock.event_base_dispatch = [](event_base *) { return -1; };
+    Var<EventBase> evb = EventBase::create(&mock);
+    REQUIRE_THROWS_AS(EventBase::dispatch(&mock, evb), LibeventException);
+}
+
+TEST_CASE("EventBase::loop deals with event_base_loop() returning 0") {
+    Mock mock;
+    mock.event_base_loop = [](event_base *, int) { return 0; };
+    Var<EventBase> evb = EventBase::create(&mock);
+    EventBase::loop(&mock, evb, 0);
+}
+
+TEST_CASE("EventBase::loop deals with event_base_loop() returning 1") {
+    Mock mock;
+    mock.event_base_loop = [](event_base *, int) { return 1; };
+    Var<EventBase> evb = EventBase::create(&mock);
+    EventBase::loop(&mock, evb, 0);
+}
+
+TEST_CASE("EventBase::loop deals with event_base_loop() failure") {
+    Mock mock;
+    mock.event_base_loop = [](event_base *, int) { return -1; };
+    Var<EventBase> evb = EventBase::create(&mock);
+    REQUIRE_THROWS_AS(EventBase::loop(&mock, evb, 0), LibeventException);
+}
+
+TEST_CASE("EventBase::once deals with event_base_once() failure") {
+    Mock mock;
+    mock.event_base_once = [](event_base *, evutil_socket_t, short,
+                              event_callback_fn, void *, const timeval *) {
+                                  return -1;
+                              };
+    Var<EventBase> evb = EventBase::create(&mock);
+    REQUIRE_THROWS_AS(EventBase::once(&mock, evb, 0, EV_TIMEOUT, nullptr,
+                                      nullptr), LibeventException);
 }

@@ -165,3 +165,18 @@ TEST_CASE("Connect to port where SSL is not active") {
     REQUIRE(ssl_connected == false);
     REQUIRE(output == "");
 }
+
+TEST_CASE("event_base_once works") {
+    bool called = false;
+    timeval timeo;
+    timeo.tv_sec = 1;
+    timeo.tv_usec = 17;
+    Var<EventBase> evbase = EventBase::create();
+    EventBase::once(evbase, -1, EV_TIMEOUT, [&called, evbase](short w) {
+        REQUIRE(w == EV_TIMEOUT);
+        EventBase::loopbreak(evbase);
+        called = true;
+    }, &timeo);
+    EventBase::dispatch(evbase);
+    REQUIRE(called == true);
+}
