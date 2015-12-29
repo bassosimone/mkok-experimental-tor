@@ -21,11 +21,11 @@ config.status
 config.sub
 configure
 depcomp
+doc
 example/bufferevent-echo
 example/bufferevent-get
 example/bufferevent-get-ssl
 example/event-echo
-html
 install-sh
 libtool
 ltmain.sh
