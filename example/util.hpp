@@ -91,15 +91,21 @@ void sendrecv(Var<EventBase> evbase, Var<Bufferevent> bev, std::string request,
             Var<Evbuffer> evbuf = Evbuffer::create();
             Bufferevent::read_buffer(bev, evbuf);
             if (output) {
-                std::string s = Evbuffer::pullup(evbuf, -1);
-                *output += s;
+                *output += Evbuffer::pullup(evbuf, -1);
             } else if (must_echo) {
                 Bufferevent::write_buffer(bev, evbuf);
             }
         },
         nullptr,
-        [bev, evbase](short what) {
+        [bev, evbase, output](short what) {
             possibly_print_error(what, bev);
+
+            Var<Evbuffer> input = Bufferevent::get_input(bev);
+            if (Evbuffer::get_length(input) > 0) {
+                // We still have some more buffered data to add to output
+                *output += Evbuffer::pullup(input, -1);
+                Evbuffer::drain(input, Evbuffer::get_length(input));
+            }
 
             Var<Evbuffer> output = Bufferevent::get_output(bev);
             if (Evbuffer::get_length(output) > 0) {

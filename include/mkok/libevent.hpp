@@ -153,6 +153,7 @@ class Mock {
        bufferevent *(event_base *, evutil_socket_t, int));
     XX(bufferevent_write, int(bufferevent *, const void *, size_t));
     XX(bufferevent_write_buffer, int(bufferevent *, evbuffer *));
+    XX(evbuffer_drain, int(evbuffer *, size_t));
     XX(evbuffer_free, void(evbuffer *));
     XX(evbuffer_new, evbuffer *());
     XX(evbuffer_pullup, unsigned char *(evbuffer *, ssize_t));
@@ -187,6 +188,7 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_SOCKET_NEW mockp->bufferevent_socket_new
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE mockp->bufferevent_write
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER mockp->bufferevent_write_buffer
+#define MKOK_LIBEVENT_EVBUFFER_DRAIN mockp->evbuffer_drain
 #define MKOK_LIBEVENT_EVBUFFER_FREE mockp->evbuffer_free
 #define MKOK_LIBEVENT_EVBUFFER_NEW mockp->evbuffer_new
 #define MKOK_LIBEVENT_EVBUFFER_PULLUP mockp->evbuffer_pullup
@@ -222,6 +224,7 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_SOCKET_NEW ::bufferevent_socket_new
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE ::bufferevent_write
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER ::bufferevent_write_buffer
+#define MKOK_LIBEVENT_EVBUFFER_DRAIN ::evbuffer_drain
 #define MKOK_LIBEVENT_EVBUFFER_FREE ::evbuffer_free
 #define MKOK_LIBEVENT_EVBUFFER_NEW ::evbuffer_new
 #define MKOK_LIBEVENT_EVBUFFER_PULLUP ::evbuffer_pullup
@@ -397,6 +400,12 @@ class Evbuffer {
             MKOK_LIBEVENT_THROW(LibeventException);
         }
         return std::string((char *) s, get_length(evbuf));
+    }
+
+    static void drain(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf, size_t n) {
+        if (MKOK_LIBEVENT_EVBUFFER_DRAIN(evbuf->evbuf, n) != 0) {
+            MKOK_LIBEVENT_THROW(LibeventException);
+        }
     }
 };
 

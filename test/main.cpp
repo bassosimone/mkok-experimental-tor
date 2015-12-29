@@ -310,6 +310,15 @@ TEST_CASE("Evbuffer::pullup deals with evbuffer_pullup failure") {
     REQUIRE_THROWS_AS(Evbuffer::pullup(&mock, evb, -1), LibeventException);
 }
 
+TEST_CASE("Evbuffer::drain deals with evbuffer_drain failure") {
+    Mock mock;
+    mock.evbuffer_drain = [](evbuffer *, size_t) {
+        return -1;
+    };
+    Var<Evbuffer> evb = Evbuffer::create(&mock);
+    REQUIRE_THROWS_AS(Evbuffer::drain(&mock, evb, 512), LibeventException);
+}
+
 // Bufferevent
 
 TEST_CASE("Bufferevent::socket_new deals with bufferevent_socket_new failure") {
