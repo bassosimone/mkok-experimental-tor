@@ -54,8 +54,13 @@ enum class Error {
     EVENT_BASE_LOOP,
     EVENT_BASE_LOOPBREAK,
     EVENT_BASE_ONCE,
+    EVBUFFER_ADD,
+    EVBUFFER_ADD_BUFFER,
+    EVBUFFER_PEEK,
+    EVBUFFER_PEEK_MISMATCH,
     EVBUFFER_PULLUP,
     EVBUFFER_DRAIN,
+    EVBUFFER_REMOVE_BUFFER,
     BUFFEREVENT_SOCKET_NEW,
     BUFFEREVENT_SOCKET_CONNECT,
     BUFFEREVENT_WRITE,
@@ -99,8 +104,13 @@ XX(EventBaseDispatchException, EVENT_BASE_DISPATCH);
 XX(EventBaseLoopException, EVENT_BASE_LOOP);
 XX(EventBaseLoopbreakException, EVENT_BASE_LOOPBREAK);
 XX(EventBaseOnceException, EVENT_BASE_ONCE);
-XX(EvbufferPullupException, EVBUFFER_PULLUP);
+XX(EvbufferAddException, EVBUFFER_ADD);
+XX(EvbufferAddBufferException, EVBUFFER_ADD_BUFFER);
 XX(EvbufferDrainException, EVBUFFER_DRAIN);
+XX(EvbufferPeekException, EVBUFFER_PEEK);
+XX(EvbufferPeekMismatchException, EVBUFFER_PEEK_MISMATCH);
+XX(EvbufferPullupException, EVBUFFER_PULLUP);
+XX(EvbufferRemoveBufferException, EVBUFFER_REMOVE_BUFFER);
 XX(BuffereventSocketNewException, BUFFEREVENT_SOCKET_NEW);
 XX(BuffereventSocketConnectException, BUFFEREVENT_SOCKET_CONNECT);
 XX(BuffereventWriteException, BUFFEREVENT_WRITE);
@@ -188,10 +198,17 @@ class Mock {
        bufferevent *(event_base *, evutil_socket_t, int));
     XX(bufferevent_write, int(bufferevent *, const void *, size_t));
     XX(bufferevent_write_buffer, int(bufferevent *, evbuffer *));
+    XX(evbuffer_add, int(evbuffer *, const void *, size_t));
+    XX(evbuffer_add_buffer, int(evbuffer *, evbuffer *));
     XX(evbuffer_drain, int(evbuffer *, size_t));
     XX(evbuffer_free, void(evbuffer *));
     XX(evbuffer_new, evbuffer *());
+    XX(evbuffer_peek,
+       int(evbuffer *, ssize_t, evbuffer_ptr *, evbuffer_iovec *, int));
     XX(evbuffer_pullup, unsigned char *(evbuffer *, ssize_t));
+    XX(evbuffer_remove_buffer, int(evbuffer *, evbuffer *, size_t));
+    XX(evbuffer_search_eol, evbuffer_ptr(evbuffer *, evbuffer_ptr *, size_t *,
+                                         enum evbuffer_eol_style));
     XX(event_base_dispatch, int(event_base *));
     XX(event_base_free, void(event_base *));
     XX(event_base_loop, int(event_base *, int));
@@ -223,10 +240,15 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_SOCKET_NEW mockp->bufferevent_socket_new
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE mockp->bufferevent_write
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER mockp->bufferevent_write_buffer
+#define MKOK_LIBEVENT_EVBUFFER_ADD mockp->evbuffer_add
+#define MKOK_LIBEVENT_EVBUFFER_ADD_BUFFER mockp->evbuffer_add_buffer
 #define MKOK_LIBEVENT_EVBUFFER_DRAIN mockp->evbuffer_drain
 #define MKOK_LIBEVENT_EVBUFFER_FREE mockp->evbuffer_free
 #define MKOK_LIBEVENT_EVBUFFER_NEW mockp->evbuffer_new
+#define MKOK_LIBEVENT_EVBUFFER_PEEK mockp->evbuffer_peek
 #define MKOK_LIBEVENT_EVBUFFER_PULLUP mockp->evbuffer_pullup
+#define MKOK_LIBEVENT_EVBUFFER_REMOVE_BUFFER mockp->evbuffer_remove_buffer
+#define MKOK_LIBEVENT_EVBUFFER_SEARCH_EOL mockp->evbuffer_search_eol
 #define MKOK_LIBEVENT_EVENT_BASE_DISPATCH mockp->event_base_dispatch
 #define MKOK_LIBEVENT_EVENT_BASE_FREE mockp->event_base_free
 #define MKOK_LIBEVENT_EVENT_BASE_LOOP mockp->event_base_loop
@@ -259,10 +281,15 @@ class Mock {
 #define MKOK_LIBEVENT_BUFFEREVENT_SOCKET_NEW ::bufferevent_socket_new
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE ::bufferevent_write
 #define MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER ::bufferevent_write_buffer
+#define MKOK_LIBEVENT_EVBUFFER_ADD ::evbuffer_add
+#define MKOK_LIBEVENT_EVBUFFER_ADD_BUFFER ::evbuffer_add_buffer
 #define MKOK_LIBEVENT_EVBUFFER_DRAIN ::evbuffer_drain
 #define MKOK_LIBEVENT_EVBUFFER_FREE ::evbuffer_free
 #define MKOK_LIBEVENT_EVBUFFER_NEW ::evbuffer_new
+#define MKOK_LIBEVENT_EVBUFFER_PEEK ::evbuffer_peek
 #define MKOK_LIBEVENT_EVBUFFER_PULLUP ::evbuffer_pullup
+#define MKOK_LIBEVENT_EVBUFFER_REMOVE_BUFFER ::evbuffer_remove_buffer
+#define MKOK_LIBEVENT_EVBUFFER_SEARCH_EOL ::evbuffer_search_eol
 #define MKOK_LIBEVENT_EVENT_BASE_DISPATCH ::event_base_dispatch
 #define MKOK_LIBEVENT_EVENT_BASE_FREE ::event_base_free
 #define MKOK_LIBEVENT_EVENT_BASE_LOOP ::event_base_loop
@@ -434,13 +461,113 @@ class Evbuffer {
         if (s == nullptr) {
             MKOK_LIBEVENT_THROW(EvbufferPullupException);
         }
-        return std::string((char *) s, get_length(evbuf));
+        return std::string((char *)s, get_length(evbuf));
     }
 
     static void drain(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf, size_t n) {
         if (MKOK_LIBEVENT_EVBUFFER_DRAIN(evbuf->evbuf, n) != 0) {
             MKOK_LIBEVENT_THROW(EvbufferDrainException);
         }
+    }
+
+    static void add(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf, const void *base,
+                    size_t count) {
+        if (MKOK_LIBEVENT_EVBUFFER_ADD(evbuf->evbuf, base, count) != 0) {
+            MKOK_LIBEVENT_THROW(EvbufferAddException);
+        }
+    }
+
+    static void add_buffer(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                           Var<Evbuffer> b) {
+        if (MKOK_LIBEVENT_EVBUFFER_ADD_BUFFER(evbuf->evbuf, b->evbuf) != 0) {
+            MKOK_LIBEVENT_THROW(EvbufferAddBufferException);
+        }
+    }
+
+    static Var<evbuffer_iovec> peek(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                                    ssize_t len, evbuffer_ptr *start_at,
+                                    size_t &n_extents) {
+        int required = MKOK_LIBEVENT_EVBUFFER_PEEK(evbuf->evbuf, len, start_at,
+                                                   nullptr, 0);
+        if (required < 0) {
+            MKOK_LIBEVENT_THROW(EvbufferPeekException);
+        }
+        if (required == 0) {
+            return nullptr; // Caller required to check return value
+        }
+        Var<evbuffer_iovec> retval(new evbuffer_iovec[required],
+                                   [](evbuffer_iovec *p) { delete[] p; });
+        evbuffer_iovec *iov = retval.get();
+        int used = MKOK_LIBEVENT_EVBUFFER_PEEK(evbuf->evbuf, len, start_at, iov,
+                                               required);
+        if (used != required) {
+            MKOK_LIBEVENT_THROW(EvbufferPeekMismatchException);
+        }
+        // Cast to unsigned safe because we excluded negative case above
+        n_extents = (unsigned)required;
+        return retval;
+    }
+
+    static void for_each_(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                          std::function<bool(const void *, size_t)> cb) {
+        // Not part of libevent API but useful to wrap part of such API
+        size_t n_extents = 0;
+        Var<evbuffer_iovec> raii =
+            peek(MKOK_LIBEVENT_MOCKP_NAME evbuf, -1, nullptr, n_extents);
+        if (!raii) return;  // Prevent exception if pointer is null
+        auto iov = raii.get();
+        for (size_t i = 0; i < n_extents; ++i) {
+            if (!cb(iov[i].iov_base, iov[i].iov_len)) {
+                break;
+            }
+        }
+    }
+
+    static std::string copyout(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                               size_t upto) {
+        std::string out;
+        for_each_(MKOK_LIBEVENT_MOCKP_NAME evbuf,
+                  [&out, &upto](const void *p, size_t n) {
+                      if (upto < n) n = upto;
+                      out.append((const char *)p, n);
+                      upto -= n;
+                      return (upto > 0);
+                  });
+        return out;
+    }
+
+    static std::string remove(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                              size_t upto) {
+        std::string out = copyout(MKOK_LIBEVENT_MOCKP_NAME evbuf, upto);
+        if (out.size() > 0) {
+            drain(MKOK_LIBEVENT_MOCKP_NAME evbuf, out.size());
+        }
+        return out;
+    }
+
+    static int remove_buffer(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                             Var<Evbuffer> b, size_t count) {
+        int len =
+            MKOK_LIBEVENT_EVBUFFER_REMOVE_BUFFER(evbuf->evbuf, b->evbuf, count);
+        if (len < 0) {
+            MKOK_LIBEVENT_THROW(EvbufferRemoveBufferException);
+        }
+        return len;
+    }
+
+    static std::string readln(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
+                              enum evbuffer_eol_style style) {
+        size_t eol_length = 0;
+        auto sre = MKOK_LIBEVENT_EVBUFFER_SEARCH_EOL(evbuf->evbuf, nullptr,
+                                                     &eol_length, style);
+        if (sre.pos < 0) {
+            return "";
+        }
+        // Note: pos is ssize_t and we have excluded the negative case above
+        std::string out =
+            remove(MKOK_LIBEVENT_MOCKP_NAME evbuf, (size_t)sre.pos);
+        drain(MKOK_LIBEVENT_MOCKP_NAME evbuf, eol_length);
+        return out;
     }
 };
 
