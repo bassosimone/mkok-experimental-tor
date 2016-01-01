@@ -41,7 +41,7 @@ namespace MKOK_LIBEVENT_NAMESPACE {
 #endif
 
 /// \addtogroup errors
-/// @{
+/// \{
 
 enum class Error {
     NO_ERROR = 0,
@@ -125,9 +125,9 @@ XX(BuffereventOpensslFilterNewException, BUFFEREVENT_OPENSSL_FILTER_NEW);
 #define MKOK_LIBEVENT_THROW(class_name)                                        \
     throw class_name(__FILE__, __LINE__, __func__)
 
-/// @}
+/// \}
 /// \addtogroup util
-/// @{
+/// \{
 
 template <typename T> class Var : public std::shared_ptr<T> {
     // BEWARE NOT TO ADD ANY ATTRIBUTE TO THIS CLASS BECAUSE THAT MAY
@@ -172,9 +172,9 @@ template <typename T> class Func {
     std::function<T> func;
 };
 
-/// @}
+/// \}
 /// \addtogroup regress
-/// @{
+/// \{
 
 #ifdef MKOK_LIBEVENT_ENABLE_MOCK
 
@@ -305,9 +305,9 @@ class Mock {
 
 #endif
 
-/// @}
+/// \}
 /// \addtogroup wrappers
-/// @{
+/// \{
 
 class Evutil {
   public:
@@ -731,7 +731,7 @@ class Bufferevent {
     }
 };
 
-/// @}
+/// \}
 
 #ifdef MKOK_LIBEVENT_NAMESPACE
 } // namespace
