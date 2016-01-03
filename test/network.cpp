@@ -5,7 +5,7 @@
 #define CATCH_CONFIG_MAIN
 
 #include "example/util.hpp"
-#include "test/catch.hpp"
+#include "catch.hpp"
 
 static const char *REQUEST = "GET /robots.txt HTTP/1.0\r\n\r\n";
 

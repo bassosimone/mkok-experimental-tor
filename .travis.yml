@@ -50,6 +50,7 @@ before_script:
   - if [ "$GCOV" != "" ]; then pip install --user --upgrade cpp-coveralls; fi
 
 script:
+  - ./scripts/mkpm install
   - autoreconf -i
   - ./configure -q $COVERAGE $VALGRIND
   - if [ "$VALGRIND" != "" ]; then
@@ -61,6 +62,6 @@ script:
 after_script:
   - if [ "$GCOV" != "" ]; then
       coveralls --gcov $(which $GCOV) --gcov-options '\-lp'
-                --exclude test/catch.hpp --exclude 'example/*.cpp'
+                --exclude mk_modules --exclude 'example/*.cpp'
                 --exclude config.h;
     fi

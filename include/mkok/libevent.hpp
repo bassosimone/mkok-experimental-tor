@@ -13,6 +13,7 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <mkok/base.hpp>
 #include <openssl/ssl.h>
 #include <string>
 #include <utility>
@@ -36,18 +37,16 @@ static void mkok_libevent_event_cb(evutil_socket_t, short w, void *p);
 
 } // extern "C"
 
-#ifdef MKOK_LIBEVENT_NAMESPACE
-namespace MKOK_LIBEVENT_NAMESPACE {
+#ifdef MKOK_NAMESPACE
+namespace MKOK_NAMESPACE {
 #endif
 
 /// \addtogroup errors
 /// \{
 
-enum class Error {
-    NO_ERROR = 0,
-    GENERIC,
-    NULL_POINTER,
-    EVUTIL_MAKE_SOCKET_NONBLOCKING,
+// Note that libevent error codes MUST start from 1000
+enum LibeventErrorCode {
+    EVUTIL_MAKE_SOCKET_NONBLOCKING = 1000,
     EVUTIL_PARSE_SOCKADDR_PORT,
     EVUTIL_MAKE_LISTEN_SOCKET_REUSEABLE,
     EVENT_BASE_DISPATCH,
@@ -72,105 +71,32 @@ enum class Error {
     BUFFEREVENT_OPENSSL_FILTER_NEW,
 };
 
-class Exception : public std::exception {
-  public:
-    std::string file;
-    int line = 0;
-    std::string func;
-    Error error = Error::GENERIC;
-
-    Exception() {}
-
-    Exception(const char *f, int n, const char *fn, Error c)
-        : file(f), line(n), func(fn), error(c) {}
-
-    ~Exception() {}
-};
-
-#define XX(class_name, error_code)                                             \
-    class class_name : public Exception {                                      \
-      public:                                                                  \
-        class_name(const char *f, int n, const char *fn)                       \
-            : Exception(f, n, fn, Error::error_code) {}                        \
-    }
-XX(NoException, NO_ERROR);
-XX(GenericException, GENERIC);
-XX(NullPointerException, NULL_POINTER);
-XX(EvutilMakeSocketNonblockingException, EVUTIL_MAKE_SOCKET_NONBLOCKING);
-XX(EvutilParseSockaddrPortException, EVUTIL_PARSE_SOCKADDR_PORT);
-XX(EvutilMakeListenSocketReuseableException,
+#define XX(a, b) MKOK_DEFINE_ERROR(a, LibeventErrorCode::b)
+XX(EvutilMakeSocketNonblockingError, EVUTIL_MAKE_SOCKET_NONBLOCKING);
+XX(EvutilParseSockaddrPortError, EVUTIL_PARSE_SOCKADDR_PORT);
+XX(EvutilMakeListenSocketReuseableError,
    EVUTIL_MAKE_LISTEN_SOCKET_REUSEABLE);
-XX(EventBaseDispatchException, EVENT_BASE_DISPATCH);
-XX(EventBaseLoopException, EVENT_BASE_LOOP);
-XX(EventBaseLoopbreakException, EVENT_BASE_LOOPBREAK);
-XX(EventBaseOnceException, EVENT_BASE_ONCE);
-XX(EvbufferAddException, EVBUFFER_ADD);
-XX(EvbufferAddBufferException, EVBUFFER_ADD_BUFFER);
-XX(EvbufferDrainException, EVBUFFER_DRAIN);
-XX(EvbufferPeekException, EVBUFFER_PEEK);
-XX(EvbufferPeekMismatchException, EVBUFFER_PEEK_MISMATCH);
-XX(EvbufferPullupException, EVBUFFER_PULLUP);
-XX(EvbufferRemoveBufferException, EVBUFFER_REMOVE_BUFFER);
-XX(BuffereventSocketNewException, BUFFEREVENT_SOCKET_NEW);
-XX(BuffereventSocketConnectException, BUFFEREVENT_SOCKET_CONNECT);
-XX(BuffereventWriteException, BUFFEREVENT_WRITE);
-XX(BuffereventWriteBufferException, BUFFEREVENT_WRITE_BUFFER);
-XX(BuffereventReadBufferException, BUFFEREVENT_READ_BUFFER);
-XX(BuffereventEnableException, BUFFEREVENT_ENABLE);
-XX(BuffereventDisableException, BUFFEREVENT_DISABLE);
-XX(BuffereventSetTimeoutsException, BUFFEREVENT_SET_TIMEOUTS);
-XX(BuffereventOpensslFilterNewException, BUFFEREVENT_OPENSSL_FILTER_NEW);
+XX(EventBaseDispatchError, EVENT_BASE_DISPATCH);
+XX(EventBaseLoopError, EVENT_BASE_LOOP);
+XX(EventBaseLoopbreakError, EVENT_BASE_LOOPBREAK);
+XX(EventBaseOnceError, EVENT_BASE_ONCE);
+XX(EvbufferAddError, EVBUFFER_ADD);
+XX(EvbufferAddBufferError, EVBUFFER_ADD_BUFFER);
+XX(EvbufferDrainError, EVBUFFER_DRAIN);
+XX(EvbufferPeekError, EVBUFFER_PEEK);
+XX(EvbufferPeekMismatchError, EVBUFFER_PEEK_MISMATCH);
+XX(EvbufferPullupError, EVBUFFER_PULLUP);
+XX(EvbufferRemoveBufferError, EVBUFFER_REMOVE_BUFFER);
+XX(BuffereventSocketNewError, BUFFEREVENT_SOCKET_NEW);
+XX(BuffereventSocketConnectError, BUFFEREVENT_SOCKET_CONNECT);
+XX(BuffereventWriteError, BUFFEREVENT_WRITE);
+XX(BuffereventWriteBufferError, BUFFEREVENT_WRITE_BUFFER);
+XX(BuffereventReadBufferError, BUFFEREVENT_READ_BUFFER);
+XX(BuffereventEnableError, BUFFEREVENT_ENABLE);
+XX(BuffereventDisableError, BUFFEREVENT_DISABLE);
+XX(BuffereventSetTimeoutsError, BUFFEREVENT_SET_TIMEOUTS);
+XX(BuffereventOpensslFilterNewError, BUFFEREVENT_OPENSSL_FILTER_NEW);
 #undef XX
-
-#define MKOK_LIBEVENT_THROW(class_name)                                        \
-    throw class_name(__FILE__, __LINE__, __func__)
-
-/// \}
-/// \addtogroup util
-/// \{
-
-template <typename T> class Var : public std::shared_ptr<T> {
-    // BEWARE NOT TO ADD ANY ATTRIBUTE TO THIS CLASS BECAUSE THAT MAY
-    // LEAD TO OBJECT SLICING AND SUBTLE BUGS
-
-  public:
-    using std::shared_ptr<T>::shared_ptr;
-
-    T *get() const {
-        // Provides no-null-pointer-returned guarantee
-        T *p = std::shared_ptr<T>::get();
-        if (p == nullptr) {
-            MKOK_LIBEVENT_THROW(NullPointerException);
-        }
-        return p;
-    }
-
-    T *operator->() const { return get(); }
-};
-
-template <typename T> class Func {
-  public:
-    Func() {}
-    Func(std::function<T> f) : func(f) {}
-
-    ~Func() {}
-
-    void operator=(std::function<T> f) { func = f; }
-    void operator=(std::nullptr_t f) { func = f; }
-
-    // not implementing swap and assign
-
-    operator bool() { return bool(func); }
-
-    template <typename... Args> void operator()(Args &&... args) {
-        // Make sure the original closure is not destroyed before end of scope
-        auto backup = func;
-        backup(std::forward<Args>(args)...);
-    }
-
-  private:
-    std::function<T> func;
-};
 
 /// \}
 /// \addtogroup regress
@@ -313,21 +239,21 @@ class Evutil {
   public:
     static void make_socket_nonblocking(MKOK_LIBEVENT_MOCKP evutil_socket_t s) {
         if (MKOK_LIBEVENT_EVUTIL_MAKE_SOCKET_NONBLOCKING(s) != 0) {
-            MKOK_LIBEVENT_THROW(EvutilMakeSocketNonblockingException);
+            MKOK_THROW(EvutilMakeSocketNonblockingError);
         }
     }
 
     static void parse_sockaddr_port(MKOK_LIBEVENT_MOCKP std::string s,
                                     sockaddr *p, int *n) {
         if (MKOK_LIBEVENT_EVUTIL_PARSE_SOCKADDR_PORT(s.c_str(), p, n) != 0) {
-            MKOK_LIBEVENT_THROW(EvutilParseSockaddrPortException);
+            MKOK_THROW(EvutilParseSockaddrPortError);
         }
     }
 
     static void
     make_listen_socket_reuseable(MKOK_LIBEVENT_MOCKP evutil_socket_t s) {
         if (MKOK_LIBEVENT_EVUTIL_MAKE_LISTEN_SOCKET_REUSEABLE(s) != 0) {
-            MKOK_LIBEVENT_THROW(EvutilMakeListenSocketReuseableException);
+            MKOK_THROW(EvutilMakeListenSocketReuseableError);
         }
     }
 };
@@ -357,7 +283,7 @@ class EventBase {
     static Var<EventBase> assign(MKOK_LIBEVENT_MOCKP event_base *pointer,
                                  bool owned) {
         if (pointer == nullptr) {
-            MKOK_LIBEVENT_THROW(NullPointerException);
+            MKOK_THROW(NullPointerError);
         }
         Var<EventBase> base(new EventBase);
         base->evbase = pointer;
@@ -376,7 +302,7 @@ class EventBase {
     static int dispatch(MKOK_LIBEVENT_MOCKP Var<EventBase> base) {
         int ctrl = MKOK_LIBEVENT_EVENT_BASE_DISPATCH(base->evbase);
         if (ctrl != 0 && ctrl != 1) {
-            MKOK_LIBEVENT_THROW(EventBaseDispatchException);
+            MKOK_THROW(EventBaseDispatchError);
         }
         return ctrl;
     }
@@ -384,14 +310,14 @@ class EventBase {
     static int loop(MKOK_LIBEVENT_MOCKP Var<EventBase> base, int flags) {
         int ctrl = MKOK_LIBEVENT_EVENT_BASE_LOOP(base->evbase, flags);
         if (ctrl != 0 && ctrl != 1) {
-            MKOK_LIBEVENT_THROW(EventBaseLoopException);
+            MKOK_THROW(EventBaseLoopError);
         }
         return ctrl;
     }
 
     static void loopbreak(MKOK_LIBEVENT_MOCKP Var<EventBase> base) {
         if (MKOK_LIBEVENT_EVENT_BASE_LOOPBREAK(base->evbase) != 0) {
-            MKOK_LIBEVENT_THROW(EventBaseLoopbreakException);
+            MKOK_THROW(EventBaseLoopbreakError);
         }
     }
 
@@ -404,7 +330,7 @@ class EventBase {
                                           mkok_libevent_event_cb, func,
                                           timeo) != 0) {
             delete func;
-            MKOK_LIBEVENT_THROW(EventBaseOnceException);
+            MKOK_THROW(EventBaseOnceError);
         }
     }
 };
@@ -435,7 +361,7 @@ class Evbuffer {
     static Var<Evbuffer> assign(MKOK_LIBEVENT_MOCKP evbuffer *pointer,
                                 bool owned) {
         if (pointer == nullptr) {
-            MKOK_LIBEVENT_THROW(NullPointerException);
+            MKOK_THROW(NullPointerError);
         }
         Var<Evbuffer> evbuf(new Evbuffer);
         evbuf->evbuf = pointer;
@@ -459,28 +385,28 @@ class Evbuffer {
                               ssize_t n) {
         unsigned char *s = MKOK_LIBEVENT_EVBUFFER_PULLUP(evbuf->evbuf, n);
         if (s == nullptr) {
-            MKOK_LIBEVENT_THROW(EvbufferPullupException);
+            MKOK_THROW(EvbufferPullupError);
         }
         return std::string((char *)s, get_length(evbuf));
     }
 
     static void drain(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf, size_t n) {
         if (MKOK_LIBEVENT_EVBUFFER_DRAIN(evbuf->evbuf, n) != 0) {
-            MKOK_LIBEVENT_THROW(EvbufferDrainException);
+            MKOK_THROW(EvbufferDrainError);
         }
     }
 
     static void add(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf, const void *base,
                     size_t count) {
         if (MKOK_LIBEVENT_EVBUFFER_ADD(evbuf->evbuf, base, count) != 0) {
-            MKOK_LIBEVENT_THROW(EvbufferAddException);
+            MKOK_THROW(EvbufferAddError);
         }
     }
 
     static void add_buffer(MKOK_LIBEVENT_MOCKP Var<Evbuffer> evbuf,
                            Var<Evbuffer> b) {
         if (MKOK_LIBEVENT_EVBUFFER_ADD_BUFFER(evbuf->evbuf, b->evbuf) != 0) {
-            MKOK_LIBEVENT_THROW(EvbufferAddBufferException);
+            MKOK_THROW(EvbufferAddBufferError);
         }
     }
 
@@ -490,7 +416,7 @@ class Evbuffer {
         int required = MKOK_LIBEVENT_EVBUFFER_PEEK(evbuf->evbuf, len, start_at,
                                                    nullptr, 0);
         if (required < 0) {
-            MKOK_LIBEVENT_THROW(EvbufferPeekException);
+            MKOK_THROW(EvbufferPeekError);
         }
         if (required == 0) {
             return nullptr; // Caller required to check return value
@@ -501,7 +427,7 @@ class Evbuffer {
         int used = MKOK_LIBEVENT_EVBUFFER_PEEK(evbuf->evbuf, len, start_at, iov,
                                                required);
         if (used != required) {
-            MKOK_LIBEVENT_THROW(EvbufferPeekMismatchException);
+            MKOK_THROW(EvbufferPeekMismatchError);
         }
         // Cast to unsigned safe because we excluded negative case above
         n_extents = (unsigned)required;
@@ -550,7 +476,7 @@ class Evbuffer {
         int len =
             MKOK_LIBEVENT_EVBUFFER_REMOVE_BUFFER(evbuf->evbuf, b->evbuf, count);
         if (len < 0) {
-            MKOK_LIBEVENT_THROW(EvbufferRemoveBufferException);
+            MKOK_THROW(EvbufferRemoveBufferError);
         }
         return len;
     }
@@ -607,7 +533,7 @@ class Bufferevent {
             MKOK_LIBEVENT_BUFFEREVENT_SOCKET_NEW(base->evbase, fd, flags);
         if (ptr->bevp == nullptr) {
             delete ptr;
-            MKOK_LIBEVENT_THROW(BuffereventSocketNewException);
+            MKOK_THROW(BuffereventSocketNewError);
         }
         MKOK_LIBEVENT_BUFFEREVENT_SETCB(ptr->bevp, mkok_libevent_bev_read,
                                         mkok_libevent_bev_write,
@@ -623,7 +549,7 @@ class Bufferevent {
     static void socket_connect(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev,
                                sockaddr *sa, int len) {
         if (MKOK_LIBEVENT_BUFFEREVENT_SOCKET_CONNECT(bev->bevp, sa, len) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventSocketConnectException);
+            MKOK_THROW(BuffereventSocketConnectError);
         }
     }
 
@@ -638,14 +564,14 @@ class Bufferevent {
     static void write(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev,
                       const void *base, size_t count) {
         if (MKOK_LIBEVENT_BUFFEREVENT_WRITE(bev->bevp, base, count) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventWriteException);
+            MKOK_THROW(BuffereventWriteError);
         }
     }
 
     static void write_buffer(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev,
                              Var<Evbuffer> s) {
         if (MKOK_LIBEVENT_BUFFEREVENT_WRITE_BUFFER(bev->bevp, s->evbuf) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventWriteBufferException);
+            MKOK_THROW(BuffereventWriteBufferError);
         }
     }
 
@@ -656,26 +582,26 @@ class Bufferevent {
     static void read_buffer(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev,
                             Var<Evbuffer> d) {
         if (MKOK_LIBEVENT_BUFFEREVENT_READ_BUFFER(bev->bevp, d->evbuf) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventReadBufferException);
+            MKOK_THROW(BuffereventReadBufferError);
         }
     }
 
     static void enable(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev, short what) {
         if (MKOK_LIBEVENT_BUFFEREVENT_ENABLE(bev->bevp, what) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventEnableException);
+            MKOK_THROW(BuffereventEnableError);
         }
     }
 
     static void disable(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev, short what) {
         if (MKOK_LIBEVENT_BUFFEREVENT_DISABLE(bev->bevp, what) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventDisableException);
+            MKOK_THROW(BuffereventDisableError);
         }
     }
 
     static void set_timeouts(MKOK_LIBEVENT_MOCKP Var<Bufferevent> bev,
                              const timeval *rto, const timeval *wto) {
         if (MKOK_LIBEVENT_BUFFEREVENT_SET_TIMEOUTS(bev->bevp, rto, wto) != 0) {
-            MKOK_LIBEVENT_THROW(BuffereventSetTimeoutsException);
+            MKOK_THROW(BuffereventSetTimeoutsError);
         }
     }
 
@@ -689,7 +615,7 @@ class Bufferevent {
             base->evbase, underlying->bevp, ssl, state, 0);
         if (ptr->bevp == nullptr) {
             delete ptr;
-            MKOK_LIBEVENT_THROW(BuffereventOpensslFilterNewException);
+            MKOK_THROW(BuffereventOpensslFilterNewError);
         }
         // Clear eventual self-references that `underlying` could have such that
         // when we clear `ptr->underlying` this should be enough to destroy it
@@ -733,7 +659,7 @@ class Bufferevent {
 
 /// \}
 
-#ifdef MKOK_LIBEVENT_NAMESPACE
+#ifdef MKOK_NAMESPACE
 } // namespace
 #endif
 
@@ -745,8 +671,8 @@ static void mkok_libevent_event_cb(evutil_socket_t, short w, void *p) {
     delete f;
 }
 
-#ifdef MKOK_LIBEVENT_NAMESPACE
-#define XX MKOK_LIBEVENT_NAMESPACE::
+#ifdef MKOK_NAMESPACE
+#define XX MKOK_NAMESPACE::
 #else
 #define XX
 #endif

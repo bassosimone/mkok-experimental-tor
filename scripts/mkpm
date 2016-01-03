@@ -1,0 +1,217 @@
+#!/bin/sh -e
+# Part of measurement-kit <https://measurement-kit.github.io/>.
+# Measurement-kit is free software. See AUTHORS and LICENSE for more
+# information on the copying conditions.
+
+config_file=.mkpm.conf
+github=https://github.com
+modules_dir=mk_modules
+raw_github=https://raw.githubusercontent.com
+
+usage() {
+    echo "usage: $0 [install]"
+    echo "       $0 command [command...]"
+    echo ""
+    echo "common commands:"
+    echo "  install - installs header-only dependencies in mk_modules"
+    echo "  init - initialize working directory with stub content"
+    echo ""
+    echo "less-common commands:"
+    echo "  examples - append rules to build examples to Makefile.am"
+    echo "  headers - append rules to install headers to Makefile.am"
+    echo "  module - same as install"
+    echo "  template - download all stub content overwriting existing one"
+    echo "  tests - append rules to build tests to Makefile.am"
+}
+
+do_examples() {
+    echo "" >> Makefile.am
+    echo "# mkpm: examples" >> Makefile.am
+    for source in `ls example/*.cpp`; do
+        binary=`echo $source | sed -e 's|.cpp$||g'`
+        slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
+        echo "  EXAMPLE $source"
+        echo "${slug}_SOURCES = $source" >> Makefile.am
+        echo "if BUILD_EXAMPLES" >> Makefile.am
+        echo "    noinst_PROGRAMS += $binary" >> Makefile.am
+        echo "endif" >> Makefile.am
+        echo "$binary" >> .gitignore
+    done
+}
+
+do_headers() {
+    echo "" >> Makefile.am
+    echo "# mkpm: headers" >> Makefile.am
+    for dir in "$@"; do
+        if [ ! -d "include/$dir" ]; then
+            echo "warn: missing directory: include/$dir"
+            continue
+        fi
+        slug=`echo $dir | sed 's|/||g'`
+        echo "${slug}includedir = \$(includedir)/$dir" >> Makefile.am
+        echo "${slug}include_HEADERS = # Empty" >> Makefile.am
+        for file in `ls include/$dir/*.hpp`; do
+            echo "  HEADER $file"
+            echo "${slug}include_HEADERS += $file" >> Makefile.am
+        done
+    done
+}
+
+do_module() {
+    set -- $@  # reparse arguments
+    author=$1
+    repos=$2
+    if [ -z "$author" -o -z "$repos" ]; then
+        echo "do_module: passed invalid input"
+        exit 1
+    fi
+    commit=$3
+    if [ ! -d $modules_dir ]; then
+        mkdir $modules_dir;
+    fi
+    set +e
+    (
+        set -e
+        install -d $modules_dir/$author
+        cd $modules_dir/$author
+        rm -rf $repos
+        echo "  MODULE $author/$repos"
+        git clone -q --depth=50 $github/$author/$repos
+        cd $repos
+        if [ ! -z "$commit" ]; then
+            git checkout -q $commit
+        fi
+    )
+    set -e
+}
+
+do_template() {
+    set -- $@  # reparse arguments
+    pathname=$1
+    author_and_repos=$2
+    commit=$3
+    if [ -z "$pathname" ]; then
+        echo "do_template: passed invalid input"
+        exit 1
+    fi
+    if [ -z "$author_and_repos" ]; then
+        author_and_repos=bassosimone/mkpm
+    fi
+    if [ -z "$commit" ]; then
+        commit=master
+    fi
+    dir_name=`dirname $pathname`
+    base_name=`basename $pathname`
+    if [ `echo $base_name | grep '^dot.'` ]; then
+        real_base_name=`echo $base_name | sed 's/^dot././g'`
+    else
+        real_base_name=$base_name
+    fi
+    echo "  UPDATE $real_base_name"
+    set +e
+    (
+        set -e
+        if [ ! -z "$dir_name" ]; then
+            cd $dir_name
+        fi
+        curl -sO $raw_github/$author_and_repos/$commit/$pathname
+        if [ "$real_base_name" != "$base_name" ]; then
+            mv $base_name $real_base_name
+        fi
+    )
+    set -e
+}
+
+do_tests() {
+    if [ ! -d "test" ]; then
+        echo "warn: missing directory: test"
+        return
+    fi
+    echo "" >> Makefile.am
+    echo "# mkpm: tests" >> Makefile.am
+    for source in `ls test/*.cpp`; do
+        binary=`echo $source | sed -e 's|.cpp$||g'`
+        slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
+        echo "  BUILD_TEST $source"
+        echo "${slug}_SOURCES = $source" >> Makefile.am
+        echo "if BUILD_TESTS" >> Makefile.am
+        echo "    check_PROGRAMS += $binary" >> Makefile.am
+        echo "    TESTS += $binary" >> Makefile.am
+        echo "endif" >> Makefile.am
+        echo "$binary" >> .gitignore
+    done
+}
+
+run_command() {
+    command=$1
+    while read tag remainder; do
+        if [ "$command" != "$tag" ]; then
+            continue
+        fi
+        if [ "$command" = "examples" ]; then
+            do_examples $remainder
+        elif [ "$command" = "headers" ]; then
+            do_headers $remainder
+        elif [ "$command" = "module" ]; then
+            do_module $remainder
+        elif [ "$command" = "template" ]; then
+            do_template $remainder
+        elif [ "$command" = "tests" ]; then
+            do_tests $remainder
+        fi
+    done < $config_file
+}
+
+main() {
+    if [ "$1" != "auto" ]; then
+        cmd=$1
+    elif [ ! -f $config_file ]; then
+        echo "notice: creating default config file" 1>&2
+        echo "template Doxyfile.in" >> $config_file
+        echo "template Makefile.am" >> $config_file
+        echo "template configure.ac" >> $config_file
+        echo "template dot.clang-format" >> $config_file
+        echo "template dot.gitignore" >> $config_file
+        echo "template dot.travis.yml" >> $config_file
+        echo "template m4/mkpm.m4" >> $config_file
+        echo "template scripts/mkpm_new" >> $config_file
+        echo "module philsquared Catch" >> $config_file
+        echo "headers mkok" >> $config_file
+        echo "examples" >> $config_file
+        echo "tests" >> $config_file
+        install -vd example
+        install -vd include/mkok
+        install -vd m4
+        install -vd test
+        cmd=init
+    else
+        cmd=install
+    fi
+    if [ "$cmd" = "install" ]; then
+        run_command module
+    elif [ "$cmd" = "init" ]; then
+        run_command template
+        run_command headers
+        run_command examples
+        run_command tests
+    elif [ "$cmd" = "help" -o "$cmd" = "--help" -o "$cmd" = "-h" ]; then
+        usage
+        exit 0
+    else
+        run_command $cmd
+    fi
+}
+
+if [ $# -eq 0 ]; then
+    set -- "auto"
+fi
+while [ $# -gt 0 ]; do
+    main $1
+    shift
+done
+
+# Handle self update. This must be done at the end.
+test -f scripts/mkpm_new || exit 0
+echo "  INSTALL_NEW mkpm"
+chmod +x scripts/mkpm_new
+exec mv scripts/mkpm_new scripts/mkpm
