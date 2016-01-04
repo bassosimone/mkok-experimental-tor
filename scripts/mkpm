@@ -107,10 +107,12 @@ cmd_install() {
                 exec_cmd install -d $MODULES_DIR/.spec-cache
                 exec_cmd cd $MODULES_DIR/.spec-cache
                 exec_cmd curl -sO $GITHUB_RAW/master/spec/$spec_or_name.spec
-                exec_cmd source $spec_or_name.spec
                 exec_cmd cd -
+                # Changing directory before sourcing the spec file is necessary
+                # for dash (Debian/Ubuntu's /bin/sh) to see the file (why?)
+                exec_cmd . $MODULES_DIR/.spec-cache/$spec_or_name.spec
             else
-                exec_cmd source $spec_or_name
+                exec_cmd . $spec_or_name
             fi
             echo_blue "install-spec" $pkgname
             if [ -d $MODULES_DIR/$pkgname -a "$force" != "yes" ]; then
