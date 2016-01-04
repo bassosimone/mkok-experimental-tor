@@ -105,11 +105,11 @@ AC_DEFUN([MKPM_PRINT_SUMMARY], [
   echo "tests         : $enable_tests"
 ])
 
-AC_DEFUN([MKPM_FIND_MKMODULES], [
-  dirs=$(ls -d mk_modules/*/*)
-  for dir in $dirs; do
-      if test -d $dir/include; then
-          CPPFLAGS="$CPPFLAGS -I \$(top_srcdir)/$dir/include"
-      fi
-  done
+AC_DEFUN([MKPM_USE_MODULES], [
+  if test -d $srcdir/mk_modules/.dist/include; then
+    CPPFLAGS="$CPPFLAGS -I\$(top_srcdir)/mk_modules/.dist/include"
+  fi
+  if test -d $srcdir/mk_modules/.dist/lib; then
+    LDFLAGS="$LDFLAGS -L\$(top_srcdir)/mk_modules/.dist/lib"
+  fi
 ])

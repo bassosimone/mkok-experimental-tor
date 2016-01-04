@@ -3,136 +3,200 @@
 # Measurement-kit is free software. See AUTHORS and LICENSE for more
 # information on the copying conditions.
 
-config_file=.mkpm.conf
-github=https://github.com
-modules_dir=mk_modules
-raw_github=https://raw.githubusercontent.com
+COLOR_BLUE="\033[1;34m"
+COLOR_GREEN="\033[1;32m"
+COLOR_PURPLE="\033[1;35m"
+COLOR_RED="\033[1;31m"
+COLOR_RESET="\033[0m"
+COLOR_YELLOW="\033[1;33m"
 
-usage() {
-    echo "usage: $0 [install]"
-    echo "       $0 command [command...]"
-    echo ""
-    echo "common commands:"
-    echo "  install - installs header-only dependencies in mk_modules"
-    echo "  init - initialize working directory with stub content"
-    echo ""
-    echo "less-common commands:"
-    echo "  examples - append rules to build examples to Makefile.am"
-    echo "  headers - append rules to install headers to Makefile.am"
-    echo "  module - same as install"
-    echo "  template - download all stub content overwriting existing one"
-    echo "  tests - append rules to build tests to Makefile.am"
+BUILD_FILE=MKBUILD
+CONFIG_FILE=mkpm-install.conf
+DIST_DIR_NAME=.mk-dist
+GITHUB_RAW=https://raw.githubusercontent.com/bassosimone/mkpm
+MODULES_DIR=`pwd`/mk_modules
+
+echo_blue() {
+    first=$1
+    shift
+    echo "${COLOR_BLUE}${first}${COLOR_RESET}" "$@"
+}
+echo_green() {
+    first=$1
+    shift
+    echo "${COLOR_GREEN}${first}${COLOR_RESET}" "$@"
+}
+echo_red() {
+    first=$1
+    shift
+    echo "${COLOR_RED}${first}${COLOR_RESET}" "$@"
+}
+echo_purple() {
+    first=$1
+    shift
+    echo "${COLOR_PURPLE}${first}${COLOR_RESET}" "$@"
+}
+echo_purple_ifset() {
+    [ -z "$2" ] || echo_purple "$@"
+}
+echo_yellow() {
+    first=$1
+    shift
+    echo "${COLOR_YELLOW}${first}${COLOR_RESET}" "$@"
 }
 
-do_examples() {
+echo_phase() {
+    echo_blue "->" "$@"
+}
+
+exec_cmd() {
+    echo_green "cmd:" "$@"
+    "$@"
+}
+
+exec_build_cmd() {
+    echo_yellow "build_cmd:" "$@"
+    "$@"
+}
+
+pkg_clone() {
+    if [ ! -z "$pkgtag" ]; then
+        pkgtag="--branch=$pkgtag"
+    fi
+    exec_build_cmd git clone -q --depth=8 $pkgtag $pkgrepo $pkgname
+}
+pkg_prepare() {
+    exec_build_cmd cd $pkgname
+    exec_build_cmd autoreconf -i
+    exec_build_cmd ./configure --prefix=/ $CONFIGURE_FLAGS $pkg_CONFIGURE_FLAGS
+}
+pkg_build() {
+    exec_build_cmd cd $pkgname
+    exec_build_cmd make $MAKE_FLAGS $pkg_MAKE_FLAGS
+}
+pkg_package() {
+    exec_build_cmd cd $pkgname
+    exec_build_cmd make $MAKE_FLAGS $pkg_MAKE_FLAGS install DESTDIR=$DESTDIR
+}
+
+cmd_install() {
+    args=`getopt f $@` || {
+        echo "usage: $0 install [-f] package..." 2>&1
+        exit 1
+    }
+    set -- $args
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -f) force="yes"; shift;;
+            --) shift; break;;
+        esac
+    done
+    if [ $# -eq 0 ]; then
+        if [ ! -f $CONFIG_FILE ]; then
+            echo_red "fatal" "missing config file: $CONFIG_FILE"
+            exit 1
+        fi
+        set -- `cat $CONFIG_FILE`
+    fi
+    while [ $# -gt 0 ]; do
+        spec_or_name=$1; shift
+        # Execute in a subshell to avoid polluting environment
+        (
+            if echo $spec_or_name | grep -vq '\.spec$'; then
+                echo_blue "fetch-spec-by-name" $spec_or_name
+                exec_cmd install -d $MODULES_DIR/.spec-cache
+                exec_cmd cd $MODULES_DIR/.spec-cache
+                exec_cmd curl -sO $GITHUB_RAW/master/spec/$spec_or_name.spec
+                exec_cmd source $spec_or_name.spec
+                exec_cmd cd -
+            else
+                exec_cmd source $spec_or_name
+            fi
+            echo_blue "install-spec" $pkgname
+            if [ -d $MODULES_DIR/$pkgname -a "$force" != "yes" ]; then
+                echo_red "warn:" "already installed: $pkgname"
+                continue
+            fi
+            exec_cmd rm -rf $MODULES_DIR/$pkgname
+            exec_cmd install -d $MODULES_DIR/$pkgname
+            exec_cmd cd $MODULES_DIR/$pkgname
+            export DESTDIR=$MODULES_DIR/.dist
+            echo_purple_ifset "CC:" "$CC"
+            echo_purple_ifset "CFLAGS:" "$CFLAGS"
+            echo_purple_ifset "CONFIGURE_FLAGS:" "$CONFIGURE_FLAGS"
+            echo_purple_ifset "CPPFLAGS:" "$CPPFLAGS"
+            echo_purple_ifset "CXX:" "$CXX"
+            echo_purple_ifset "CXXFLAGS:" "$CXXFLAGS"
+            echo_purple_ifset "DESTDIR:" "$DESTDIR"
+            echo_purple_ifset "LDFLAGS:" "$LDFLAGS"
+            echo_purple_ifset "MAKE_FLAGS:" "$MAKE_FLAGS"
+            echo_purple_ifset "pkg_MAKE_FLAGS:" "$pkg_MAKE_FLAGS"
+            echo_purple_ifset "pkg_CONFIGURE_FLAGS:" "$pkg_CONFIGURE_FLAGS"
+            # Execute each phase in isolation in a distinct subshell
+            (exec_cmd pkg_clone)
+            (exec_cmd pkg_prepare)
+            (exec_cmd pkg_build)
+            (exec_cmd pkg_package)
+        )
+    done
+}
+
+cmd_init() {
+    usage_string="usage: $0 init"
+    if [ $# -ne 0 ]; then
+        echo "$usage_string" 1>&2
+        exit 1
+    fi
+
+    echo_phase "Download stub files"
+    for name in Doxyfile.in Makefile.am configure.ac .clang-format \
+                .gitignore .travis.yml mkpm-install.conf autogen.sh; do
+        exec_cmd curl -sO $GITHUB_RAW/master/stub/$name
+    done
+    exec_cmd chmod +x autogen.sh
+    for name in m4/mkpm.m4 scripts/mkpm_new; do
+        dirname=`dirname $name`
+        exec_cmd install -d $dirname
+        exec_cmd cd $dirname
+        exec_cmd curl -sO $GITHUB_RAW/master/stub/$name
+        exec_cmd cd ..
+    done
+
+    echo_phase "Add examples, includes, tests to Makefile.am"
+
+    exec_cmd install -d example
+    echo "    \033[1;32m->\033[0m" "add examples"
     echo "" >> Makefile.am
-    echo "# mkpm: examples" >> Makefile.am
     for source in `ls example/*.cpp`; do
         binary=`echo $source | sed -e 's|.cpp$||g'`
         slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
-        echo "  EXAMPLE $source"
+        echo "        \033[1;35mEXAMPLE\033[0m:" "$source"
         echo "${slug}_SOURCES = $source" >> Makefile.am
         echo "if BUILD_EXAMPLES" >> Makefile.am
         echo "    noinst_PROGRAMS += $binary" >> Makefile.am
         echo "endif" >> Makefile.am
         echo "$binary" >> .gitignore
     done
-}
 
-do_headers() {
+    exec_cmd install -d include/mkok
+    echo "    \033[1;32m->\033[0m" "add headers"
     echo "" >> Makefile.am
-    echo "# mkpm: headers" >> Makefile.am
-    for dir in "$@"; do
-        if [ ! -d "include/$dir" ]; then
-            echo "warn: missing directory: include/$dir"
-            continue
-        fi
-        slug=`echo $dir | sed 's|/||g'`
-        echo "${slug}includedir = \$(includedir)/$dir" >> Makefile.am
-        echo "${slug}include_HEADERS = # Empty" >> Makefile.am
-        for file in `ls include/$dir/*.hpp`; do
-            echo "  HEADER $file"
-            echo "${slug}include_HEADERS += $file" >> Makefile.am
-        done
+    dir="mkok"
+    slug=`echo $dir | sed 's|/||g'`
+    echo "${slug}includedir = \$(includedir)/$dir" >> Makefile.am
+    echo "${slug}include_HEADERS = # Empty" >> Makefile.am
+    for file in `ls include/$dir/*.hpp`; do
+        echo "        \033[1;35mHEADER\033[0m:" "$file"
+        echo "${slug}include_HEADERS += $file" >> Makefile.am
     done
-}
 
-do_module() {
-    set -- $@  # reparse arguments
-    author=$1
-    repos=$2
-    if [ -z "$author" -o -z "$repos" ]; then
-        echo "do_module: passed invalid input"
-        exit 1
-    fi
-    commit=$3
-    if [ ! -d $modules_dir ]; then
-        mkdir $modules_dir;
-    fi
-    set +e
-    (
-        set -e
-        install -d $modules_dir/$author
-        cd $modules_dir/$author
-        rm -rf $repos
-        echo "  MODULE $author/$repos"
-        git clone -q --depth=50 $github/$author/$repos
-        cd $repos
-        if [ ! -z "$commit" ]; then
-            git checkout -q $commit
-        fi
-    )
-    set -e
-}
-
-do_template() {
-    set -- $@  # reparse arguments
-    pathname=$1
-    author_and_repos=$2
-    commit=$3
-    if [ -z "$pathname" ]; then
-        echo "do_template: passed invalid input"
-        exit 1
-    fi
-    if [ -z "$author_and_repos" ]; then
-        author_and_repos=bassosimone/mkpm
-    fi
-    if [ -z "$commit" ]; then
-        commit=master
-    fi
-    dir_name=`dirname $pathname`
-    base_name=`basename $pathname`
-    if [ `echo $base_name | grep '^dot.'` ]; then
-        real_base_name=`echo $base_name | sed 's/^dot././g'`
-    else
-        real_base_name=$base_name
-    fi
-    echo "  UPDATE $real_base_name"
-    set +e
-    (
-        set -e
-        if [ ! -z "$dir_name" ]; then
-            cd $dir_name
-        fi
-        curl -sO $raw_github/$author_and_repos/$commit/$pathname
-        if [ "$real_base_name" != "$base_name" ]; then
-            mv $base_name $real_base_name
-        fi
-    )
-    set -e
-}
-
-do_tests() {
-    if [ ! -d "test" ]; then
-        echo "warn: missing directory: test"
-        return
-    fi
+    exec_cmd install -d test
+    echo "    \033[1;32m->\033[0m" "add tests"
     echo "" >> Makefile.am
-    echo "# mkpm: tests" >> Makefile.am
     for source in `ls test/*.cpp`; do
         binary=`echo $source | sed -e 's|.cpp$||g'`
         slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
-        echo "  BUILD_TEST $source"
+        echo "        \033[1;35mTEST\033[0m:" "$source"
         echo "${slug}_SOURCES = $source" >> Makefile.am
         echo "if BUILD_TESTS" >> Makefile.am
         echo "    check_PROGRAMS += $binary" >> Makefile.am
@@ -140,78 +204,25 @@ do_tests() {
         echo "endif" >> Makefile.am
         echo "$binary" >> .gitignore
     done
+
+    # Handle self update. This must be done at the end.
+    test -f scripts/mkpm_new || exit 0
+    echo_phase "Self update"
+    exec_cmd chmod +x scripts/mkpm_new
+    echo "    \033[1;32m->\033[0m" "exec mv scripts/mkpm_new scripts/mkpm"
+    exec mv scripts/mkpm_new scripts/mkpm
 }
 
-run_command() {
+if [ $# -gt 0 ]; then
     command=$1
-    while read tag remainder; do
-        if [ "$command" != "$tag" ]; then
-            continue
-        fi
-        if [ "$command" = "examples" ]; then
-            do_examples $remainder
-        elif [ "$command" = "headers" ]; then
-            do_headers $remainder
-        elif [ "$command" = "module" ]; then
-            do_module $remainder
-        elif [ "$command" = "template" ]; then
-            do_template $remainder
-        elif [ "$command" = "tests" ]; then
-            do_tests $remainder
-        fi
-    done < $config_file
-}
-
-main() {
-    if [ "$1" != "auto" ]; then
-        cmd=$1
-    elif [ ! -f $config_file ]; then
-        echo "notice: creating default config file" 1>&2
-        echo "template Doxyfile.in" >> $config_file
-        echo "template Makefile.am" >> $config_file
-        echo "template configure.ac" >> $config_file
-        echo "template dot.clang-format" >> $config_file
-        echo "template dot.gitignore" >> $config_file
-        echo "template dot.travis.yml" >> $config_file
-        echo "template m4/mkpm.m4" >> $config_file
-        echo "template scripts/mkpm_new" >> $config_file
-        echo "module philsquared Catch" >> $config_file
-        echo "headers mkok" >> $config_file
-        echo "examples" >> $config_file
-        echo "tests" >> $config_file
-        install -vd example
-        install -vd include/mkok
-        install -vd m4
-        install -vd test
-        cmd=init
-    else
-        cmd=install
-    fi
-    if [ "$cmd" = "install" ]; then
-        run_command module
-    elif [ "$cmd" = "init" ]; then
-        run_command template
-        run_command headers
-        run_command examples
-        run_command tests
-    elif [ "$cmd" = "help" -o "$cmd" = "--help" -o "$cmd" = "-h" ]; then
-        usage
-        exit 0
-    else
-        run_command $cmd
-    fi
-}
-
-if [ $# -eq 0 ]; then
-    set -- "auto"
-fi
-while [ $# -gt 0 ]; do
-    main $1
     shift
-done
+fi
 
-# Handle self update. This must be done at the end.
-test -f scripts/mkpm_new || exit 0
-echo "  INSTALL_NEW mkpm"
-chmod +x scripts/mkpm_new
-exec mv scripts/mkpm_new scripts/mkpm
+if [ "$command" = "init" ]; then
+    cmd_init "$@"
+elif [ "$command" = "install" ]; then
+    cmd_install "$@"
+else
+    echo "usage: $0 init|install [options]" 1>&2
+    exit 1
+fi

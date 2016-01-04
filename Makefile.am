@@ -17,12 +17,6 @@ run-valgrind: $(check_PROGRAMS)
 	  $(VALGRIND) $$test_name || exit 1;                                   \
 	done
 
-# mkpm: headers
-mkokincludedir = $(includedir)/mkok
-mkokinclude_HEADERS = # Empty
-mkokinclude_HEADERS += include/mkok/libevent.hpp
-
-# mkpm: examples
 example_bufferevent_echo_SOURCES = example/bufferevent-echo.cpp
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/bufferevent-echo
@@ -40,7 +34,10 @@ if BUILD_EXAMPLES
     noinst_PROGRAMS += example/event-echo
 endif
 
-# mkpm: tests
+mkokincludedir = $(includedir)/mkok
+mkokinclude_HEADERS = # Empty
+mkokinclude_HEADERS += include/mkok/libevent.hpp
+
 test_main_SOURCES = test/main.cpp
 if BUILD_TESTS
     check_PROGRAMS += test/main
