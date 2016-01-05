@@ -59,6 +59,14 @@ exec_build_cmd() {
     "$@"
 }
 
+usage() {
+    echo_red "usage:" "$@" 1>&2
+    exit 1
+}
+
+pkg_start_over() {
+    exec_build_cmd rm -rf $pkgname
+}
 pkg_clone() {
     if [ ! -z "$pkgtag" ]; then
         pkgtag="--branch=$pkgtag"
@@ -79,14 +87,34 @@ pkg_package() {
     exec_build_cmd make $MAKE_FLAGS $pkg_MAKE_FLAGS install DESTDIR=$DESTDIR
 }
 
+cmd_configure() {
+    args=`getopt d:f $@` || {
+        usage "$0 configure [-d modules-dir] [--] [configure-args]"
+    }
+    set -- $args
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -d) MODULES_DIR=$2; shift; shift;;
+            --) shift; break;;
+        esac
+    done
+    export DESTDIR=$MODULES_DIR/.dist
+    exec_cmd install -d $DESTDIR/include
+    exec_cmd install -d $DESTDIR/lib
+    export CPPFLAGS="$CPPFLAGS -I$DESTDIR/include"
+    export LDFLAGS="$LDFLAGS -L$DESTDIR/lib"
+    exec_cmd ./configure "$@"
+}
+
 cmd_install() {
-    args=`getopt f $@` || {
-        echo "usage: $0 install [-f] package..." 2>&1
+    args=`getopt d:f $@` || {
+        usage "$0 install [-f] [-d modules-dir] package..."
         exit 1
     }
     set -- $args
     while [ $# -gt 0 ]; do
         case "$1" in
+            -d) MODULES_DIR=$2; shift; shift;;
             -f) force="yes"; shift;;
             --) shift; break;;
         esac
@@ -119,10 +147,11 @@ cmd_install() {
                 echo_red "warn:" "already installed: $pkgname"
                 continue
             fi
-            exec_cmd rm -rf $MODULES_DIR/$pkgname
-            exec_cmd install -d $MODULES_DIR/$pkgname
-            exec_cmd cd $MODULES_DIR/$pkgname
             export DESTDIR=$MODULES_DIR/.dist
+            exec_cmd install -d $DESTDIR/include
+            exec_cmd install -d $DESTDIR/lib
+            export CPPFLAGS="$CPPFLAGS -I$DESTDIR/include"
+            export LDFLAGS="$LDFLAGS -L$DESTDIR/lib"
             echo_purple_ifset "CC:" "$CC"
             echo_purple_ifset "CFLAGS:" "$CFLAGS"
             echo_purple_ifset "CONFIGURE_FLAGS:" "$CONFIGURE_FLAGS"
@@ -135,6 +164,9 @@ cmd_install() {
             echo_purple_ifset "pkg_MAKE_FLAGS:" "$pkg_MAKE_FLAGS"
             echo_purple_ifset "pkg_CONFIGURE_FLAGS:" "$pkg_CONFIGURE_FLAGS"
             # Execute each phase in isolation in a distinct subshell
+            exec_cmd install -d $MODULES_DIR/$pkgname
+            exec_cmd cd $MODULES_DIR/$pkgname
+            (exec_cmd pkg_start_over)
             (exec_cmd pkg_clone)
             (exec_cmd pkg_prepare)
             (exec_cmd pkg_build)
@@ -144,10 +176,8 @@ cmd_install() {
 }
 
 cmd_init() {
-    usage_string="usage: $0 init"
     if [ $# -ne 0 ]; then
-        echo "$usage_string" 1>&2
-        exit 1
+        usage "$0 init"
     fi
 
     echo_phase "Download stub files"
@@ -220,11 +250,12 @@ if [ $# -gt 0 ]; then
     shift
 fi
 
-if [ "$command" = "init" ]; then
+if [ "$command" = "configure" ]; then
+    cmd_configure "$@"
+elif [ "$command" = "init" ]; then
     cmd_init "$@"
 elif [ "$command" = "install" ]; then
     cmd_install "$@"
 else
-    echo "usage: $0 init|install [options]" 1>&2
-    exit 1
+    usage "$0 configure|init|install [options]"
 fi

@@ -46,8 +46,8 @@ AC_DEFUN([MKPM_REQUIRE_OPENSSL], [
       CPPFLAGS="$CPPFLAGS -I$withval/include"
       LDFLAGS="$LDFLAGS -L$withval/lib"], [])
   AC_CHECK_HEADERS(openssl/ssl.h, [], [AC_MSG_ERROR([OpenSSL not found])])
-  AC_CHECK_LIB(ssl, SSL_new, [], [AC_MSG_ERROR([OpenSSL not found])])
   AC_CHECK_LIB(crypto, RSA_new, [], [AC_MSG_ERROR([OpenSSL not found])])
+  AC_CHECK_LIB(ssl, SSL_new, [], [AC_MSG_ERROR([OpenSSL not found])])
 ])
 
 dnl Make sure that the compiler supports C++11
@@ -103,13 +103,4 @@ AC_DEFUN([MKPM_PRINT_SUMMARY], [
   echo "examples      : $enable_examples"
   echo "network_tests : $enable_network_tests"
   echo "tests         : $enable_tests"
-])
-
-AC_DEFUN([MKPM_USE_MODULES], [
-  if test -d $srcdir/mk_modules/.dist/include; then
-    CPPFLAGS="$CPPFLAGS -I\$(top_srcdir)/mk_modules/.dist/include"
-  fi
-  if test -d $srcdir/mk_modules/.dist/lib; then
-    LDFLAGS="$LDFLAGS -L\$(top_srcdir)/mk_modules/.dist/lib"
-  fi
 ])
