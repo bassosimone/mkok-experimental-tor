@@ -50,6 +50,44 @@ AC_DEFUN([MKPM_REQUIRE_OPENSSL], [
   AC_CHECK_LIB(ssl, SSL_new, [], [AC_MSG_ERROR([OpenSSL not found])])
 ])
 
+dnl Require libz and add --with-libz flag
+AC_DEFUN([MKPM_REQUIRE_ZLIB], [
+  AC_ARG_WITH([zlib],
+    AS_HELP_STRING([--with-zlib, Compress/decompress library]), [
+      CPPFLAGS="$CPPFLAGS -I$withval/include"
+      LDFLAGS="$LDFLAGS -L$withval/lib"], [])
+  AC_CHECK_HEADERS(zlib.h, [], [AC_MSG_ERROR([zlib not found])])
+  AC_CHECK_LIB(z, inflate, [], [AC_MSG_ERROR([zlib not found])])
+])
+
+dnl Require libtor and add --with-libtor flag
+AC_DEFUN([MKPM_REQUIRE_LIBTOR], [
+  AC_ARG_WITH([libtor],
+    AS_HELP_STRING([--with-libtor, Libraries containing all Tor sources]), [
+      CPPFLAGS="$CPPFLAGS -I$withval/include"
+      LDFLAGS="$LDFLAGS -L$withval/lib"], [])
+  AC_CHECK_HEADERS(tor/libtor.h, [], [AC_MSG_ERROR([libtor.h not found])])
+
+  saved_LIBS="$LIBS"
+  LIBS="-lkeccak-tiny -led25519_ref10 -led25519_donna -lcurve25519_donna -lor-trunnel -lor-event -lor-crypto -lor -ltor $LIBS"
+  AC_MSG_CHECKING([whether we can link with Tor])
+  AC_LANG_PUSH([C])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([
+#include <tor/libtor.h>
+    ], [
+char *args[] = {
+  "tor",
+  "-h",
+  0
+};
+tor_main(3, args);
+    ])], [AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])
+     AC_MSG_ERROR([we cannot link with Tor])])
+  AC_LANG_POP([C])
+])
+
 dnl Make sure that the compiler supports C++11
 AC_DEFUN([MKPM_REQUIRE_CXX11], [
   saved_cxxflags="$CXXFLAGS"

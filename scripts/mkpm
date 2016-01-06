@@ -10,86 +10,144 @@ COLOR_RED="\033[1;31m"
 COLOR_RESET="\033[0m"
 COLOR_YELLOW="\033[1;33m"
 
-BUILD_FILE=MKBUILD
-CONFIG_FILE=mkpm-install.conf
-DIST_DIR_NAME=.mk-dist
-GITHUB_RAW=https://raw.githubusercontent.com/bassosimone/mkpm
-MODULES_DIR=`pwd`/mk_modules
-
 echo_blue() {
     first=$1
     shift
-    echo "${COLOR_BLUE}${first}${COLOR_RESET}" "$@"
+    echo "${COLOR_BLUE}${first}${COLOR_RESET}" "$@" 1>&2
 }
 echo_green() {
     first=$1
     shift
-    echo "${COLOR_GREEN}${first}${COLOR_RESET}" "$@"
+    echo "${COLOR_GREEN}${first}${COLOR_RESET}" "$@" 1>&2
 }
 echo_red() {
     first=$1
     shift
-    echo "${COLOR_RED}${first}${COLOR_RESET}" "$@"
+    echo "${COLOR_RED}${first}${COLOR_RESET}" "$@" 1>&2
 }
 echo_purple() {
     first=$1
     shift
-    echo "${COLOR_PURPLE}${first}${COLOR_RESET}" "$@"
+    echo "${COLOR_PURPLE}${first}${COLOR_RESET}" "$@" 1>&2
 }
 echo_purple_ifset() {
-    [ -z "$2" ] || echo_purple "$@"
+    [ -z "$2" ] || { echo_purple "$@" 1>&2; }
 }
 echo_yellow() {
     first=$1
     shift
-    echo "${COLOR_YELLOW}${first}${COLOR_RESET}" "$@"
+    echo "${COLOR_YELLOW}${first}${COLOR_RESET}" "$@" 1>&2
 }
 
 echo_phase() {
     echo_blue "->" "$@"
 }
-
 exec_cmd() {
-    echo_green "cmd:" "$@"
+    echo_green "*" "$@"
     "$@"
 }
-
-exec_build_cmd() {
+exec_make_cmd() {
     echo_yellow "build_cmd:" "$@"
     "$@"
 }
-
 usage() {
     echo_red "usage:" "$@" 1>&2
     exit 1
 }
 
-pkg_start_over() {
-    exec_build_cmd rm -rf $pkgname
+BUILD_CMD=exec_cmd
+CURL="curl -# $CURL_FLAGS"
+GIT_APPLY="git apply $GIT_APPLY_FLAGS"
+GIT_CLONE="git clone $GIT_CLONE_FLAGS"
+GITHUB=https://github.com
+MKPM_GITHUB_RAW=https://raw.githubusercontent.com/bassosimone/mkpm
+MODULES_DIR=`pwd`/mk_modules
+BUILT_CACHE=$MODULES_DIR/.built-cache
+SPEC_CACHE=$MODULES_DIR/.spec-cache
+
+mkpm_apply_patch() {
+    $BUILD_CMD $CURL -O $MKPM_GITHUB_RAW/master/spec/$1
+    $BUILD_CMD $GIT_APPLY $1
 }
-pkg_clone() {
-    if [ ! -z "$pkgtag" ]; then
-        pkgtag="--branch=$pkgtag"
-    fi
-    exec_build_cmd git clone -q --depth=8 $pkgtag $pkgrepo $pkgname
-}
-pkg_prepare() {
-    exec_build_cmd cd $pkgname
-    exec_build_cmd autoreconf -i
-    exec_build_cmd ./configure --prefix=/ $CONFIGURE_FLAGS $pkg_CONFIGURE_FLAGS
-}
-pkg_build() {
-    exec_build_cmd cd $pkgname
-    exec_build_cmd make $MAKE_FLAGS $pkg_MAKE_FLAGS
-}
-pkg_package() {
-    exec_build_cmd cd $pkgname
-    exec_build_cmd make $MAKE_FLAGS $pkg_MAKE_FLAGS install DESTDIR=$DESTDIR
+mkpm_clone() {
+    $BUILD_CMD $GIT_CLONE --depth=8 "$@"
 }
 
-cmd_configure() {
+setup_environment_vars() {
+    # Cross build tools override the destination directory
+    if [ -z "$PREFIX" ]; then
+        export PREFIX="$MODULES_DIR/.dist"
+    fi
+    export PATH="$PREFIX/bin:$PATH"
+    export CPPFLAGS="$CPPFLAGS -I$PREFIX/include"
+    export LDFLAGS="$LDFLAGS -L$PREFIX/lib"
+    # Make sure the paths below exist even if they are empty
+    exec_cmd install -d $PREFIX/bin
+    exec_cmd install -d $PREFIX/include
+    exec_cmd install -d $PREFIX/lib
+    echo_purple_ifset "CC:" "$CC"
+    echo_purple_ifset "CFLAGS:" "$CFLAGS"
+    echo_purple_ifset "CONFIGURE_FLAGS:" "$CONFIGURE_FLAGS"
+    echo_purple_ifset "CPPFLAGS:" "$CPPFLAGS"
+    echo_purple_ifset "CXX:" "$CXX"
+    echo_purple_ifset "CXXFLAGS:" "$CXXFLAGS"
+    echo_purple_ifset "DESTDIR:" "$DESTDIR"
+    echo_purple_ifset "LDFLAGS:" "$LDFLAGS"
+    echo_purple_ifset "MAKE_FLAGS:" "$MAKE_FLAGS"
+    echo_purple_ifset "MKPM_CROSS:" "$MKPM_CROSS"
+    echo_purple_ifset "PATH:" "$PATH"
+    echo_purple_ifset "PREFIX:" "$PREFIX"
+    echo_purple_ifset "pkg_branch:" "$pkg_branch"
+    echo_purple_ifset "pkg_deps:" "$pkg_deps"
+    echo_purple_ifset "pkg_name:" "$pkg_name"
+    echo_purple_ifset "pkg_repo:" "$pkg_repo"
+}
+
+pkg_depend() {
+    echo_purple_ifset "$pkg_name dependencies:" "$pkg_deps"
+    for name in $pkg_deps; do
+        $BUILD_CMD $0 install $name
+    done
+}
+pkg_clone() {
+    $BUILD_CMD cd $MODULES_DIR
+    if [ ! -z "$pkg_repo" ]; then
+        if [ ! -z "$pkg_branch" ]; then
+            pkg_branch="--branch=$pkg_branch"
+        fi
+        if [ -d $pkg_name ]; then
+            $BUILD_CMD rm -rf $pkg_name
+        fi
+        mkpm_clone $pkg_branch $pkg_repo $pkg_name
+    fi
+}
+pkg_configure() {
+    $BUILD_CMD cd $MODULES_DIR/$pkg_name
+    if [ -x ./autogen.sh ]; then
+        $BUILD_CMD ./autogen.sh
+    elif [ -f Makefile.am -o -f configure.ac ]; then
+        $BUILD_CMD autoreconf -i
+    fi
+    if [ -x configure ]; then
+        $BUILD_CMD ./configure --prefix=$PREFIX $CONFIGURE_FLAGS
+    fi
+}
+pkg_make() {
+    $BUILD_CMD cd $MODULES_DIR/$pkg_name
+    if [ -f Makefile ]; then
+        $BUILD_CMD make $MAKE_FLAGS
+    fi
+}
+pkg_make_install() {
+    $BUILD_CMD cd $MODULES_DIR/$pkg_name
+    if [ -f Makefile ]; then
+        $BUILD_CMD make $MAKE_FLAGS install
+    fi
+}
+
+cmd_shell() {
     args=`getopt d:f $@` || {
-        usage "$0 configure [-d modules-dir] [--] [configure-args]"
+        usage "$0 shell [-d modules-dir] [--] [configure-args]"
     }
     set -- $args
     while [ $# -gt 0 ]; do
@@ -98,111 +156,108 @@ cmd_configure() {
             --) shift; break;;
         esac
     done
-    export DESTDIR=$MODULES_DIR/.dist
-    exec_cmd install -d $DESTDIR/include
-    exec_cmd install -d $DESTDIR/lib
-    export CPPFLAGS="$CPPFLAGS -I$DESTDIR/include"
-    export LDFLAGS="$LDFLAGS -L$DESTDIR/lib"
-    exec_cmd ./configure "$@"
+    setup_environment_vars
+    exec_cmd "$@"
 }
 
 cmd_install() {
-    args=`getopt d:f $@` || {
-        usage "$0 install [-f] [-d modules-dir] package..."
+    phases=""
+    args=`getopt c:d: $@` || {
+        usage "$0 install [-c command] [-d outdir] package..."
+    }
+    set -- $args
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -c) phases="$phases $2"; shift; shift;;
+            -d) MODULES_DIR=$2; shift; shift;;
+            --) shift; break;;
+        esac
+    done
+    if [ $# -eq 0 ]; then
+        usage "$0 install [-c command] [-d outdir] package..."
+    fi
+    if [ -z "$phases" ]; then
+        phases="depend clone configure make make_install"
+    fi
+    while [ $# -gt 0 ]; do
+        spec_or_name=$1; shift
+        echo_blue "# install" $spec_or_name
+        # Execute in a subshell to avoid polluting environment
+        (
+            echo_yellow "## setup_environment_vars"
+            setup_environment_vars
+            echo_yellow "## fetch_spec"
+            if echo $spec_or_name | grep -vq '\.spec$'; then
+                $BUILD_CMD install -d $SPEC_CACHE
+                $BUILD_CMD $CURL -o $SPEC_CACHE/$spec_or_name.spec             \
+                    $MKPM_GITHUB_RAW/master/spec/$spec_or_name.spec
+                $BUILD_CMD . $SPEC_CACHE/$spec_or_name.spec
+            else
+                $BUILD_CMD . $spec_or_name
+            fi
+            if [ -f $BUILT_CACHE/$pkg_name ]; then
+                echo_red "warn:" "$pkg_name already built successfully"
+                echo_blue "hint:" "do 'rm $BUILT_CACHE/$pkg_name' to remove it"
+                exit 0
+            fi
+            $BUILD_CMD install -d $MODULES_DIR/$pkg_name
+            for phase in $phases; do
+                echo_yellow "## pkg_$phase"
+                # Execute every phase in a subshell not to mess with $CWD
+                (pkg_$phase)
+            done
+            install -d $BUILT_CACHE
+            touch $BUILT_CACHE/$pkg_name
+        )
+    done
+}
+
+cmd_scaffolding() {
+    args=`getopt f $@` || {
+        usage "$0 scaffolding [-f]"
         exit 1
     }
     set -- $args
     while [ $# -gt 0 ]; do
         case "$1" in
-            -d) MODULES_DIR=$2; shift; shift;;
             -f) force="yes"; shift;;
             --) shift; break;;
         esac
     done
-    if [ $# -eq 0 ]; then
-        if [ ! -f $CONFIG_FILE ]; then
-            echo_red "fatal" "missing config file: $CONFIG_FILE"
-            exit 1
-        fi
-        set -- `cat $CONFIG_FILE`
-    fi
-    while [ $# -gt 0 ]; do
-        spec_or_name=$1; shift
-        # Execute in a subshell to avoid polluting environment
-        (
-            if echo $spec_or_name | grep -vq '\.spec$'; then
-                echo_blue "fetch-spec-by-name" $spec_or_name
-                exec_cmd install -d $MODULES_DIR/.spec-cache
-                exec_cmd cd $MODULES_DIR/.spec-cache
-                exec_cmd curl -sO $GITHUB_RAW/master/spec/$spec_or_name.spec
-                exec_cmd cd -
-                # Changing directory before sourcing the spec file is necessary
-                # for dash (Debian/Ubuntu's /bin/sh) to see the file (why?)
-                exec_cmd . $MODULES_DIR/.spec-cache/$spec_or_name.spec
-            else
-                exec_cmd . $spec_or_name
-            fi
-            echo_blue "install-spec" $pkgname
-            if [ -d $MODULES_DIR/$pkgname -a "$force" != "yes" ]; then
-                echo_red "warn:" "already installed: $pkgname"
-                continue
-            fi
-            export DESTDIR=$MODULES_DIR/.dist
-            exec_cmd install -d $DESTDIR/include
-            exec_cmd install -d $DESTDIR/lib
-            export CPPFLAGS="$CPPFLAGS -I$DESTDIR/include"
-            export LDFLAGS="$LDFLAGS -L$DESTDIR/lib"
-            echo_purple_ifset "CC:" "$CC"
-            echo_purple_ifset "CFLAGS:" "$CFLAGS"
-            echo_purple_ifset "CONFIGURE_FLAGS:" "$CONFIGURE_FLAGS"
-            echo_purple_ifset "CPPFLAGS:" "$CPPFLAGS"
-            echo_purple_ifset "CXX:" "$CXX"
-            echo_purple_ifset "CXXFLAGS:" "$CXXFLAGS"
-            echo_purple_ifset "DESTDIR:" "$DESTDIR"
-            echo_purple_ifset "LDFLAGS:" "$LDFLAGS"
-            echo_purple_ifset "MAKE_FLAGS:" "$MAKE_FLAGS"
-            echo_purple_ifset "pkg_MAKE_FLAGS:" "$pkg_MAKE_FLAGS"
-            echo_purple_ifset "pkg_CONFIGURE_FLAGS:" "$pkg_CONFIGURE_FLAGS"
-            # Execute each phase in isolation in a distinct subshell
-            exec_cmd install -d $MODULES_DIR/$pkgname
-            exec_cmd cd $MODULES_DIR/$pkgname
-            (exec_cmd pkg_start_over)
-            (exec_cmd pkg_clone)
-            (exec_cmd pkg_prepare)
-            (exec_cmd pkg_build)
-            (exec_cmd pkg_package)
-        )
-    done
-}
-
-cmd_init() {
     if [ $# -ne 0 ]; then
-        usage "$0 init"
+        usage "$0 scaffolding [-f]"
+        exit 1
+    fi
+    if [ -f Makefile.am -a "$force" != "yes" ]; then
+        echo_red "fatal" "it seems you already have scaffolding"
+        echo_red "fatal" "in fact, Makefile.am is already in your working dir"
+        echo_yellow "hint" "use -f flag to force downloading scaffolding"
+        exit 1
     fi
 
     echo_phase "Download stub files"
     for name in Doxyfile.in Makefile.am configure.ac .clang-format \
-                .gitignore .travis.yml mkpm-install.conf autogen.sh; do
-        exec_cmd curl -sO $GITHUB_RAW/master/stub/$name
+                .gitignore .travis.yml autogen.sh; do
+        exec_cmd curl -sO $MKPM_GITHUB_RAW/master/stub/$name
     done
     exec_cmd chmod +x autogen.sh
     for name in m4/mkpm.m4 scripts/mkpm_new; do
         dirname=`dirname $name`
         exec_cmd install -d $dirname
         exec_cmd cd $dirname
-        exec_cmd curl -sO $GITHUB_RAW/master/stub/$name
+        exec_cmd curl -sO $MKPM_GITHUB_RAW/master/stub/$name
         exec_cmd cd ..
     done
 
     echo_phase "Add examples, includes, tests to Makefile.am"
 
     exec_cmd install -d example
-    echo "    \033[1;32m->\033[0m" "add examples"
+    echo_green "->" "add examples"
     echo "" >> Makefile.am
     for source in `ls example/*.cpp`; do
         binary=`echo $source | sed -e 's|.cpp$||g'`
         slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
-        echo "        \033[1;35mEXAMPLE\033[0m:" "$source"
+        echo_purple "EXAMPLE" "$source"
         echo "${slug}_SOURCES = $source" >> Makefile.am
         echo "if BUILD_EXAMPLES" >> Makefile.am
         echo "    noinst_PROGRAMS += $binary" >> Makefile.am
@@ -211,24 +266,24 @@ cmd_init() {
     done
 
     exec_cmd install -d include/mkok
-    echo "    \033[1;32m->\033[0m" "add headers"
+    echo_green "->" "add headers"
     echo "" >> Makefile.am
     dir="mkok"
     slug=`echo $dir | sed 's|/||g'`
     echo "${slug}includedir = \$(includedir)/$dir" >> Makefile.am
     echo "${slug}include_HEADERS = # Empty" >> Makefile.am
     for file in `ls include/$dir/*.hpp`; do
-        echo "        \033[1;35mHEADER\033[0m:" "$file"
+        echo_purple "HEADER" "$file"
         echo "${slug}include_HEADERS += $file" >> Makefile.am
     done
 
     exec_cmd install -d test
-    echo "    \033[1;32m->\033[0m" "add tests"
+    echo_green "->" "add tests"
     echo "" >> Makefile.am
     for source in `ls test/*.cpp`; do
         binary=`echo $source | sed -e 's|.cpp$||g'`
         slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
-        echo "        \033[1;35mTEST\033[0m:" "$source"
+        echo_purple "TEST" "$source"
         echo "${slug}_SOURCES = $source" >> Makefile.am
         echo "if BUILD_TESTS" >> Makefile.am
         echo "    check_PROGRAMS += $binary" >> Makefile.am
@@ -241,7 +296,7 @@ cmd_init() {
     test -f scripts/mkpm_new || exit 0
     echo_phase "Self update"
     exec_cmd chmod +x scripts/mkpm_new
-    echo "    \033[1;32m->\033[0m" "exec mv scripts/mkpm_new scripts/mkpm"
+    echo_green "cmd:" "exec mv scripts/mkpm_new scripts/mkpm"
     exec mv scripts/mkpm_new scripts/mkpm
 }
 
@@ -250,12 +305,12 @@ if [ $# -gt 0 ]; then
     shift
 fi
 
-if [ "$command" = "configure" ]; then
-    cmd_configure "$@"
-elif [ "$command" = "init" ]; then
-    cmd_init "$@"
-elif [ "$command" = "install" ]; then
+if [ "$command" = "install" ]; then
     cmd_install "$@"
+elif [ "$command" = "scaffolding" ]; then
+    cmd_scaffolding "$@"
+elif [ "$command" = "shell" ]; then
+    cmd_shell "$@"
 else
-    usage "$0 configure|init|install [options]"
+    usage "$0 install|scaffolding|shell [options]"
 fi
