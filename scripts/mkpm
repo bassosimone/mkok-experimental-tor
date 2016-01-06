@@ -55,13 +55,17 @@ usage() {
     exit 1
 }
 
+# When cross building MODULES_DIR is exported by the cross script
+if [ -z "$MODULES_DIR" ]; then
+    MODULES_DIR=`pwd`/mk_modules
+fi
+
 BUILD_CMD=exec_cmd
 CURL="curl -# $CURL_FLAGS"
 GIT_APPLY="git apply $GIT_APPLY_FLAGS"
 GIT_CLONE="git clone $GIT_CLONE_FLAGS"
 GITHUB=https://github.com
 MKPM_GITHUB_RAW=https://raw.githubusercontent.com/bassosimone/mkpm
-MODULES_DIR=`pwd`/mk_modules
 BUILT_CACHE=$MODULES_DIR/.built-cache
 SPEC_CACHE=$MODULES_DIR/.spec-cache
 
@@ -74,10 +78,10 @@ mkpm_clone() {
 }
 
 setup_environment_vars() {
-    # Cross build tools override the destination directory
-    if [ -z "$PREFIX" ]; then
-        export PREFIX="$MODULES_DIR/.dist"
-    fi
+    export PREFIX="$MODULES_DIR/.dist"
+    echo_purple_ifset "MODULES_DIR" "$MODULES_DIR"
+    echo_purple_ifset "BUILD_CACHE" "$BUILD_CACHE"
+    echo_purple_ifset "SPEC_CACHE" "$SPEC_CACHE"
     export PATH="$PREFIX/bin:$PATH"
     export CPPFLAGS="$CPPFLAGS -I$PREFIX/include"
     export LDFLAGS="$LDFLAGS -L$PREFIX/lib"
@@ -85,6 +89,10 @@ setup_environment_vars() {
     exec_cmd install -d $PREFIX/bin
     exec_cmd install -d $PREFIX/include
     exec_cmd install -d $PREFIX/lib
+    test -z "$CC" && CC=cc
+    test -z "$CXX" && CXX=c++
+    test -z "$CXXFLAGS" && CXXFLAGS="-Wall"
+    test -z "$CFLAGS" && CFLAGS="-Wall"
     echo_purple_ifset "CC:" "$CC"
     echo_purple_ifset "CFLAGS:" "$CFLAGS"
     echo_purple_ifset "CONFIGURE_FLAGS:" "$CONFIGURE_FLAGS"
@@ -106,7 +114,7 @@ setup_environment_vars() {
 pkg_depend() {
     echo_purple_ifset "$pkg_name dependencies:" "$pkg_deps"
     for name in $pkg_deps; do
-        $BUILD_CMD $0 install $name
+        $BUILD_CMD $0 install -r $name
     done
 }
 pkg_clone() {
@@ -161,23 +169,43 @@ cmd_shell() {
 }
 
 cmd_install() {
+    original_args="$@"
     phases=""
-    args=`getopt c:d: $@` || {
-        usage "$0 install [-c command] [-d outdir] package..."
+    do_depend=""
+    cross=""
+    args=`getopt c:d:rx: $@` || {
+        usage "mkpm install [-r] [-c clone|configure|make|make_install]\n"     \
+              "\t\t    [-d outdir] [-x ios[:arch]|...] package..."
     }
     set -- $args
     while [ $# -gt 0 ]; do
         case "$1" in
             -c) phases="$phases $2"; shift; shift;;
             -d) MODULES_DIR=$2; shift; shift;;
+            -r) do_depend="depend"; shift;;
+            -x) cross="$2"; shift; shift;;
             --) shift; break;;
         esac
     done
     if [ $# -eq 0 ]; then
-        usage "$0 install [-c command] [-d outdir] package..."
+        usage "mkpm install [-r] [-c clone|configure|make|make_install]\n"     \
+              "\t\t    [-d outdir] [-x ios[:arch]|...] package..."
+    fi
+    if [ "$cross" != "" -a "$MKPM_CROSS" = "" ]; then
+        if echo "$cross" | grep -q ":"; then
+            cross_arch="-a `echo $cross | sed 's/^.*://g'`"
+            cross=`echo $cross | sed 's/:.*//g'`
+        fi
+        export MKPM_CROSS="$cross"
+        # Basically, re-download the cross-compile script every time
+        $BUILD_CMD rm -rf $BUILT_CACHE/mkpm-cross-$cross
+        $BUILD_CMD $0 install -r mkpm-cross-$cross
+        $BUILD_CMD $MODULES_DIR/.dist/bin/mkpm-cross-$cross cross $cross_arch  \
+                   -- $0 install "$original_args"
+        $BUILD_CMD exit 0
     fi
     if [ -z "$phases" ]; then
-        phases="depend clone configure make make_install"
+        phases="$do_depend clone configure make make_install"
     fi
     while [ $# -gt 0 ]; do
         spec_or_name=$1; shift
