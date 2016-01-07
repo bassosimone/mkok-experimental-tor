@@ -17,34 +17,4 @@ run-valgrind: $(check_PROGRAMS)
 	  $(VALGRIND) $$test_name || exit 1;                                   \
 	done
 
-example_bufferevent_echo_SOURCES = example/bufferevent-echo.cpp
-if BUILD_EXAMPLES
-    noinst_PROGRAMS += example/bufferevent-echo
-endif
-example_bufferevent_get_ssl_SOURCES = example/bufferevent-get-ssl.cpp
-if BUILD_EXAMPLES
-    noinst_PROGRAMS += example/bufferevent-get-ssl
-endif
-example_bufferevent_get_SOURCES = example/bufferevent-get.cpp
-if BUILD_EXAMPLES
-    noinst_PROGRAMS += example/bufferevent-get
-endif
-example_event_echo_SOURCES = example/event-echo.cpp
-if BUILD_EXAMPLES
-    noinst_PROGRAMS += example/event-echo
-endif
-
-mkokincludedir = $(includedir)/mkok
-mkokinclude_HEADERS = # Empty
-mkokinclude_HEADERS += include/mkok/libevent.hpp
-
-test_main_SOURCES = test/main.cpp
-if BUILD_TESTS
-    check_PROGRAMS += test/main
-    TESTS += test/main
-endif
-test_network_SOURCES = test/network.cpp
-if BUILD_TESTS
-    check_PROGRAMS += test/network
-    TESTS += test/network
-endif
+include include.am

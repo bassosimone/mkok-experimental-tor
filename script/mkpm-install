@@ -1,0 +1,21 @@
+#!/bin/sh
+# Part of measurement-kit <https://measurement-kit.github.io/>.
+# Measurement-kit is free software. See AUTHORS and LICENSE for more
+# information on the copying conditions.
+
+if [ $# -eq 0 ]; then
+    echo "usage: $0 [package...]"
+    echo "e.g. $0 zlib libressl libevent tor"
+    exit 0
+fi
+
+rootdir=$(cd $(dirname $(dirname $0)) && pwd -P)
+curdir=`pwd`
+
+while [ $# -gt 0 ]; do
+    $rootdir/script/mkpm-install-plumbing $1 || {
+        cd $curdir # if the plumbing exited in the middle of something
+        exit 1
+    }
+    shift
+done

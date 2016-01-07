@@ -3,6 +3,7 @@ sudo: required
 dist: trusty
 
 matrix:
+  fast_finish: true
   include:
     - os: linux
       compiler: g++-5
@@ -41,18 +42,14 @@ addons:
 
 install:
   - if [ "$MKOK_CXX" != "" ]; then export CXX=$MKOK_CXX; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-      brew upgrade;
-      brew install libevent;
-    fi
 
 before_script:
   - if [ "$GCOV" != "" ]; then pip install --user --upgrade cpp-coveralls; fi
 
 script:
   - ./autogen.sh
-  - ./scripts/mkpm install -r mkok-base
-  - ./scripts/mkpm shell -- ./configure -q $COVERAGE $VALGRIND
+  - ./script/mkpm install Catch mkok-base libressl zlib libevent
+  - ./script/mkpm shell ./configure -q $COVERAGE $VALGRIND
   - if [ "$VALGRIND" != "" ]; then
       make run-valgrind V=0;
     else
