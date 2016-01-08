@@ -85,11 +85,11 @@ TEST_CASE("EventBase does not call destructor if owned is false and evbase is "
 
 TEST_CASE("EventBase calls destructor if owned is true") {
     bool was_called = false;
+    Mock mock;
     {
         EventBase evbase;
         evbase.owned = true;
         evbase.evbase = (event_base *)0xdeadbeef;
-        Mock mock;
         mock.event_base_free = [&was_called](event_base *) {
             was_called = true;
         };
