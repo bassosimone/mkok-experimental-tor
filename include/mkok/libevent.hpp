@@ -14,6 +14,7 @@
 #include <functional>
 #include <memory>
 #include <mkok/base.hpp>
+#include <mkok/evbuffer.hpp>
 #include <openssl/ssl.h>
 #include <string>
 #include <utility>
@@ -46,20 +47,10 @@ namespace MKOK_NAMESPACE {
 
 // Note that libevent error codes MUST start from 1000
 enum LibeventErrorCode {
-    EVUTIL_MAKE_SOCKET_NONBLOCKING = 1000,
-    EVUTIL_PARSE_SOCKADDR_PORT,
-    EVUTIL_MAKE_LISTEN_SOCKET_REUSEABLE,
     EVENT_BASE_DISPATCH,
     EVENT_BASE_LOOP,
     EVENT_BASE_LOOPBREAK,
     EVENT_BASE_ONCE,
-    EVBUFFER_ADD,
-    EVBUFFER_ADD_BUFFER,
-    EVBUFFER_PEEK,
-    EVBUFFER_PEEK_MISMATCH,
-    EVBUFFER_PULLUP,
-    EVBUFFER_DRAIN,
-    EVBUFFER_REMOVE_BUFFER,
     BUFFEREVENT_SOCKET_NEW,
     BUFFEREVENT_SOCKET_CONNECT,
     BUFFEREVENT_WRITE,
@@ -72,20 +63,10 @@ enum LibeventErrorCode {
 };
 
 #define XX(a, b) MKOK_DEFINE_ERROR(a, LibeventErrorCode::b)
-XX(EvutilMakeSocketNonblockingError, EVUTIL_MAKE_SOCKET_NONBLOCKING);
-XX(EvutilParseSockaddrPortError, EVUTIL_PARSE_SOCKADDR_PORT);
-XX(EvutilMakeListenSocketReuseableError, EVUTIL_MAKE_LISTEN_SOCKET_REUSEABLE);
 XX(EventBaseDispatchError, EVENT_BASE_DISPATCH);
 XX(EventBaseLoopError, EVENT_BASE_LOOP);
 XX(EventBaseLoopbreakError, EVENT_BASE_LOOPBREAK);
 XX(EventBaseOnceError, EVENT_BASE_ONCE);
-XX(EvbufferAddError, EVBUFFER_ADD);
-XX(EvbufferAddBufferError, EVBUFFER_ADD_BUFFER);
-XX(EvbufferDrainError, EVBUFFER_DRAIN);
-XX(EvbufferPeekError, EVBUFFER_PEEK);
-XX(EvbufferPeekMismatchError, EVBUFFER_PEEK_MISMATCH);
-XX(EvbufferPullupError, EVBUFFER_PULLUP);
-XX(EvbufferRemoveBufferError, EVBUFFER_REMOVE_BUFFER);
 XX(BuffereventSocketNewError, BUFFEREVENT_SOCKET_NEW);
 XX(BuffereventSocketConnectError, BUFFEREVENT_SOCKET_CONNECT);
 XX(BuffereventWriteError, BUFFEREVENT_WRITE);
@@ -103,7 +84,7 @@ XX(BuffereventOpensslFilterNewError, BUFFEREVENT_OPENSSL_FILTER_NEW);
 
 #ifdef MKOK_LIBEVENT_ENABLE_MOCK
 
-class Mock {
+class LibeventMock {
   public:
 #define XX(name, signature) std::function<signature> name = ::name
     XX(bufferevent_disable, int(bufferevent *, int));
@@ -123,17 +104,6 @@ class Mock {
        bufferevent *(event_base *, evutil_socket_t, int));
     XX(bufferevent_write, int(bufferevent *, const void *, size_t));
     XX(bufferevent_write_buffer, int(bufferevent *, evbuffer *));
-    XX(evbuffer_add, int(evbuffer *, const void *, size_t));
-    XX(evbuffer_add_buffer, int(evbuffer *, evbuffer *));
-    XX(evbuffer_drain, int(evbuffer *, size_t));
-    XX(evbuffer_free, void(evbuffer *));
-    XX(evbuffer_new, evbuffer *());
-    XX(evbuffer_peek,
-       int(evbuffer *, ssize_t, evbuffer_ptr *, evbuffer_iovec *, int));
-    XX(evbuffer_pullup, unsigned char *(evbuffer *, ssize_t));
-    XX(evbuffer_remove_buffer, int(evbuffer *, evbuffer *, size_t));
-    XX(evbuffer_search_eol, evbuffer_ptr(evbuffer *, evbuffer_ptr *, size_t *,
-                                         enum evbuffer_eol_style));
     XX(event_base_dispatch, int(event_base *));
     XX(event_base_free, void(event_base *));
     XX(event_base_loop, int(event_base *, int));
@@ -141,15 +111,12 @@ class Mock {
     XX(event_base_new, event_base *());
     XX(event_base_once, int(event_base *, evutil_socket_t, short,
                             event_callback_fn, void *, const timeval *));
-    XX(evutil_make_listen_socket_reuseable, int(evutil_socket_t));
-    XX(evutil_make_socket_nonblocking, int(evutil_socket_t));
-    XX(evutil_parse_sockaddr_port, int(const char *, sockaddr *, int *));
     XX(SSL_free, void(ssl_st *));
 #undef XX
 };
 
-#define MockPtrArg Mock *mockp,
-#define MockPtrArg0 Mock *mockp
+#define MockPtrArg LibeventMock *mockp,
+#define MockPtrArg0 LibeventMock *mockp
 #define MockPtrName mockp,
 #define call(func, ...) mockp->func(__VA_ARGS__)
 
@@ -166,34 +133,12 @@ class Mock {
 /// \addtogroup wrappers
 /// \{
 
-class Evutil {
-  public:
-    static void make_socket_nonblocking(MockPtrArg evutil_socket_t s) {
-        if (call(evutil_make_socket_nonblocking, s) != 0) {
-            MKOK_THROW(EvutilMakeSocketNonblockingError);
-        }
-    }
-
-    static void parse_sockaddr_port(MockPtrArg std::string s, sockaddr *p,
-                                    int *n) {
-        if (call(evutil_parse_sockaddr_port, s.c_str(), p, n) != 0) {
-            MKOK_THROW(EvutilParseSockaddrPortError);
-        }
-    }
-
-    static void make_listen_socket_reuseable(MockPtrArg evutil_socket_t s) {
-        if (call(evutil_make_listen_socket_reuseable, s) != 0) {
-            MKOK_THROW(EvutilMakeListenSocketReuseableError);
-        }
-    }
-};
-
 class EventBase {
   public:
     event_base *evbase = nullptr;
     bool owned = false;
 #ifdef MKOK_LIBEVENT_ENABLE_MOCK
-    Mock *mockp = nullptr;
+    LibeventMock *mockp = nullptr;
 #endif
 
     EventBase() {}
@@ -258,158 +203,6 @@ class EventBase {
             delete func;
             MKOK_THROW(EventBaseOnceError);
         }
-    }
-};
-
-class Evbuffer {
-  public:
-    evbuffer *evbuf = nullptr;
-    bool owned = false;
-#ifdef MKOK_LIBEVENT_ENABLE_MOCK
-    Mock *mockp = nullptr;
-#endif
-
-    Evbuffer() {}
-
-    Evbuffer(Evbuffer &) = delete;
-    Evbuffer &operator=(Evbuffer &) = delete;
-    Evbuffer(Evbuffer &&) = delete;
-    Evbuffer &operator=(Evbuffer &&) = delete;
-
-    ~Evbuffer() {
-        if (owned && evbuf != nullptr) {
-            call(evbuffer_free, evbuf);
-            owned = false;
-            evbuf = nullptr;
-        }
-    }
-
-    static Var<Evbuffer> assign(MockPtrArg evbuffer *pointer, bool owned) {
-        if (pointer == nullptr) {
-            MKOK_THROW(NullPointerError);
-        }
-        Var<Evbuffer> evbuf(new Evbuffer);
-        evbuf->evbuf = pointer;
-        evbuf->owned = owned;
-#ifdef MKOK_LIBEVENT_ENABLE_MOCK
-        evbuf->mockp = mockp;
-#endif
-        return evbuf;
-    }
-
-    static Var<Evbuffer> create(MockPtrArg0) {
-        return assign(MockPtrName call(evbuffer_new), true);
-    }
-
-    static size_t get_length(Var<Evbuffer> evbuf) {
-        return ::evbuffer_get_length(evbuf->evbuf);
-    }
-
-    static std::string pullup(MockPtrArg Var<Evbuffer> evbuf, ssize_t n) {
-        unsigned char *s = call(evbuffer_pullup, evbuf->evbuf, n);
-        if (s == nullptr) {
-            MKOK_THROW(EvbufferPullupError);
-        }
-        return std::string((char *)s, get_length(evbuf));
-    }
-
-    static void drain(MockPtrArg Var<Evbuffer> evbuf, size_t n) {
-        if (call(evbuffer_drain, evbuf->evbuf, n) != 0) {
-            MKOK_THROW(EvbufferDrainError);
-        }
-    }
-
-    static void add(MockPtrArg Var<Evbuffer> evbuf, const void *base,
-                    size_t count) {
-        if (call(evbuffer_add, evbuf->evbuf, base, count) != 0) {
-            MKOK_THROW(EvbufferAddError);
-        }
-    }
-
-    static void add_buffer(MockPtrArg Var<Evbuffer> evbuf, Var<Evbuffer> b) {
-        if (call(evbuffer_add_buffer, evbuf->evbuf, b->evbuf) != 0) {
-            MKOK_THROW(EvbufferAddBufferError);
-        }
-    }
-
-    static Var<evbuffer_iovec> peek(MockPtrArg Var<Evbuffer> evbuf, ssize_t len,
-                                    evbuffer_ptr *start_at, size_t &n_extents) {
-        int required =
-            call(evbuffer_peek, evbuf->evbuf, len, start_at, nullptr, 0);
-        if (required < 0) {
-            MKOK_THROW(EvbufferPeekError);
-        }
-        if (required == 0) {
-            return nullptr; // Caller required to check return value
-        }
-        Var<evbuffer_iovec> retval(new evbuffer_iovec[required],
-                                   [](evbuffer_iovec *p) { delete[] p; });
-        evbuffer_iovec *iov = retval.get();
-        int used =
-            call(evbuffer_peek, evbuf->evbuf, len, start_at, iov, required);
-        if (used != required) {
-            MKOK_THROW(EvbufferPeekMismatchError);
-        }
-        // Cast to unsigned safe because we excluded negative case above
-        n_extents = (unsigned)required;
-        return retval;
-    }
-
-    static void for_each_(MockPtrArg Var<Evbuffer> evbuf,
-                          std::function<bool(const void *, size_t)> cb) {
-        // Not part of libevent API but useful to wrap part of such API
-        size_t n_extents = 0;
-        Var<evbuffer_iovec> raii =
-            peek(MockPtrName evbuf, -1, nullptr, n_extents);
-        if (!raii) return; // Prevent exception if pointer is null
-        auto iov = raii.get();
-        for (size_t i = 0; i < n_extents; ++i) {
-            if (!cb(iov[i].iov_base, iov[i].iov_len)) {
-                break;
-            }
-        }
-    }
-
-    static std::string copyout(MockPtrArg Var<Evbuffer> evbuf, size_t upto) {
-        std::string out;
-        for_each_(MockPtrName evbuf, [&out, &upto](const void *p, size_t n) {
-            if (upto < n) n = upto;
-            out.append((const char *)p, n);
-            upto -= n;
-            return (upto > 0);
-        });
-        return out;
-    }
-
-    static std::string remove(MockPtrArg Var<Evbuffer> evbuf, size_t upto) {
-        std::string out = copyout(MockPtrName evbuf, upto);
-        if (out.size() > 0) {
-            drain(MockPtrName evbuf, out.size());
-        }
-        return out;
-    }
-
-    static int remove_buffer(MockPtrArg Var<Evbuffer> evbuf, Var<Evbuffer> b,
-                             size_t count) {
-        int len = call(evbuffer_remove_buffer, evbuf->evbuf, b->evbuf, count);
-        if (len < 0) {
-            MKOK_THROW(EvbufferRemoveBufferError);
-        }
-        return len;
-    }
-
-    static std::string readln(MockPtrArg Var<Evbuffer> evbuf,
-                              enum evbuffer_eol_style style) {
-        size_t eol_length = 0;
-        auto sre = call(evbuffer_search_eol, evbuf->evbuf, nullptr, &eol_length,
-                        style);
-        if (sre.pos < 0) {
-            return "";
-        }
-        // Note: pos is ssize_t and we have excluded the negative case above
-        std::string out = remove(MockPtrName evbuf, (size_t)sre.pos);
-        drain(MockPtrName evbuf, eol_length);
-        return out;
     }
 };
 
@@ -556,14 +349,12 @@ class Bufferevent {
         return ::bufferevent_get_openssl_error(bev->bevp);
     }
 
-    static Var<Evbuffer> get_input(MockPtrArg Var<Bufferevent> bev) {
-        return Evbuffer::assign(MockPtrName bufferevent_get_input(bev->bevp),
-                                false);
+    static Var<Evbuffer> get_input(Var<Bufferevent> bev) {
+        return Evbuffer::assign(bufferevent_get_input(bev->bevp), false);
     }
 
-    static Var<Evbuffer> get_output(MockPtrArg Var<Bufferevent> bev) {
-        return Evbuffer::assign(MockPtrName bufferevent_get_output(bev->bevp),
-                                false);
+    static Var<Evbuffer> get_output(Var<Bufferevent> bev) {
+        return Evbuffer::assign(bufferevent_get_output(bev->bevp), false);
     }
 };
 

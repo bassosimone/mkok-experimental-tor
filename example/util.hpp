@@ -14,6 +14,7 @@
 #include <functional>
 #include <iostream>
 #include <mkok/libevent.hpp>
+#include <mkok/evutil.hpp>
 #include <netinet/in.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
