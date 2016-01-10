@@ -14,45 +14,58 @@ if [ -z "$mkpm_spec_branch" ]; then
 fi
 
 mkpm_get_resource() {
-    install -d $mkpm_root/`dirname $1`
-    curl -#o $mkpm_root/$1 $mkpm_spec_repo/$mkpm_spec_branch/mkpm_modules/$1
+    install -d $mkpm_root/resource/`dirname $1`
+    if [ ! -f $mkpm_root/$1 ]; then
+        echo "get remote resource: $1"
+        curl -#o $mkpm_root/resource/$1                                        \
+            $mkpm_spec_repo/$mkpm_spec_branch/mkpm_modules/$1
+    else
+        echo "prefer local resource: $1"
+        cp $mkpm_root/$1 $mkpm_root/resource/$1
+    fi
 }
 mkpm_apply_patch() {
     mkpm_get_resource $1
-    git apply $mkpm_root/$1
+    git apply $mkpm_root/resource/$1
 }
 mkpm_install_resource() {
     mkpm_get_resource $1
-    install $mkpm_root/$1 $2
+    install $mkpm_root/resource/$1 $2
 }
 
-if [ $# -ne 1 ]; then
-    echo "usage: $0 package"
+if [ $# -lt 1 ]; then
+    echo "usage: $0 package [phase...]"
+    echo "  available phases: depend, clone, configure, make, install"
+    echo "  by default all phases are executed"
     exit 0
+fi
+if [ $# -eq 1 ]; then
+    set -- $1 depend clone configure make install
 fi
 
 install -d $mkpm_root
-install -d $mkpm_root/.installed
-install -d $mkpm_root/.deps
-install -d $mkpm_root/src
+install -d $mkpm_root/deps
 install -d $mkpm_root/dist
+install -d $mkpm_root/installed
+install -d $mkpm_root/resource
+install -d $mkpm_root/src
 
 pkg_depend() {
-    if [ -f $mkpm_root/.installed/$pkg_name ]; then
+    if [ -f $mkpm_root/installed/$pkg_name ]; then
         echo "$pkg_name: already installed"
         echo "run '$scriptdir/mkpm rm $pkg_name' to remove it"
         exit 0
     fi
-    if [ -f $mkpm_root/.deps/$pkg_name ]; then
+    if [ -f $mkpm_root/deps/$pkg_name ]; then
         echo "$pkg_name: detected dependencies loop"
         exit 0
     fi
-    touch $mkpm_root/.deps/$pkg_name
+    touch $mkpm_root/deps/$pkg_name
     for dep in $pkg_deps; do
         echo "$pkg_name: dependency: '$dep'"
         $0 $dep
     done
-    rm $mkpm_root/.deps/$pkg_name
+    rm $mkpm_root/deps/$pkg_name
 }
 
 pkg_clone() {
@@ -103,21 +116,23 @@ pkg_install() {
 #
 #    - Written by a very frustrated Simone on 2016-01-06.
 
-echo "* $1"
+pkg=$1
+shift
+echo "* $pkg"
 
 # Allow ./configure to find what we've compiled
 export CPPFLAGS="$CPPFLAGS -I$mkpm_root/dist/include"
 export LDFLAGS="$LDFLAGS -L$mkpm_root/dist/lib"
 
-echo "- spec($1)"
-mkpm_get_resource pkg/$1/spec.sh
-. $mkpm_root/pkg/$1/spec.sh
+echo "- spec($pkg)"
+mkpm_get_resource pkg/$pkg/spec.sh
+. $mkpm_root/resource/pkg/$pkg/spec.sh
 test -z "$pkg_branch" && pkg_branch=master
 
 saved_pwd=`pwd`  # save directory
-for phase in depend clone configure make install; do
-    echo "- $phase($1)"
+for phase in $@; do
+    echo "- $phase($pkg)"
     pkg_${phase}
     cd $saved_pwd   # restore
 done
-touch $mkpm_root/.installed/$pkg_name
+touch $mkpm_root/installed/$pkg_name
