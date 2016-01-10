@@ -20,13 +20,13 @@ mkokincludedir = $(includedir)/mkok
 mkokinclude_HEADERS = # Empty
 mkokinclude_HEADERS += include/mkok/libevent.hpp
 
-test_main_SOURCES = test/main.cpp
+test_integration_SOURCES = test/integration.cpp
 if BUILD_TESTS
-    check_PROGRAMS += test/main
-    TESTS += test/main
+    check_PROGRAMS += test/integration
+    TESTS += test/integration
 endif
-test_network_SOURCES = test/network.cpp
+test_unit_SOURCES = test/unit.cpp
 if BUILD_TESTS
-    check_PROGRAMS += test/network
-    TESTS += test/network
+    check_PROGRAMS += test/unit
+    TESTS += test/unit
 endif
