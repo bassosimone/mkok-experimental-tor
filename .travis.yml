@@ -48,7 +48,7 @@ before_script:
 
 script:
   - ./autogen.sh
-  - ./script/mkpm install Catch mkok-base libressl zlib libevent
+  - ./script/mkpm install `cat mkpm-requirements.txt`
   - ./script/mkpm shell ./configure -q $COVERAGE $VALGRIND
   - if [ "$VALGRIND" != "" ]; then
       make run-valgrind V=0;

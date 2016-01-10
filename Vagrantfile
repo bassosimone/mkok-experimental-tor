@@ -5,15 +5,14 @@ Vagrant.configure(2) do |config|
     v.memory = 1024
   end
   config.vm.provision "shell", inline: <<-SHELL
-    APT_PACKAGES="autoconf g++ git libtool"
-    MKPM_PACKAGES="libressl libevent mkok-base"
     REPOSITORY="mkok-libevent-ng"
     set -e
-    sudo apt-get install -y $APT_PACKAGES                                   && \
+    sudo apt-get install -y git                                             && \
       git clone https://github.com/bassosimone/$REPOSITORY                  && \
       cd $REPOSITORY                                                        && \
+      sudo apt-get install -y `cat apt-requirements.txt`                    && \
       ./autogen.sh                                                          && \
-      ./script/mkpm install $MKPM_PACKAGES                                  && \
+      ./script/mkpm install `cat mkpm-requirements.txt`                     && \
       ./script/mkpm shell ./configure                                       && \
       make V=0                                                              && \
       make check V=0
