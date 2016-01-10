@@ -8,6 +8,7 @@
 .DS_Store
 .deps
 .dirstamp
+.vagrant
 Doxyfile
 Makefile
 Makefile.in
@@ -37,9 +38,3 @@ mkpm_modules
 stamp-h1
 test-driver
 test-suite.log
-example/bufferevent-echo
-example/bufferevent-get-ssl
-example/bufferevent-get
-example/event-echo
-test/main
-test/network
