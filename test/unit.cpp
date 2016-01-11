@@ -269,7 +269,7 @@ TEST_CASE("Bufferevent::set_timeouts deals with bufferevent_set_timeouts "
 TEST_CASE("Bufferevent::openssl_filter_new deals with "
           "bufferevent_openssl_filter_new failure") {
     LibeventMock mock;
-    mock.bufferevent_openssl_filter_new = [](event_base *, bufferevent *, SSL *,
+    mock.bufferevent_openssl_filter_new = [](event_base *, bufferevent *, ssl_st *,
                                              enum bufferevent_ssl_state, int) {
         return (bufferevent *)nullptr;
     };
