@@ -9,16 +9,16 @@
 #include <event2/event.h>
 #include <event2/util.h>
 #include <functional>
+#include <mkok/evhelpers.hpp>
 #include <mkok/libevent.hpp>
 #include <stddef.h>
 #include <sys/time.h>
-#include "util.hpp"
 
 int main() {
-    example::util::listen_once_and_dispatch([](Var<EventBase> base,
-                                               evutil_socket_t conn) {
+    evhelpers::listen_once_and_dispatch([](Var<EventBase> base,
+                                           evutil_socket_t conn) {
         timeval tv{7, 7};
         auto bev = Bufferevent::socket_new(base, conn, BEV_OPT_CLOSE_ON_FREE);
-        example::util::sendrecv(base, bev, "", nullptr, &tv, true);
+        evhelpers::sendrecv(base, bev, "", nullptr, &tv, true);
     });
 }

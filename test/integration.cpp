@@ -4,7 +4,7 @@
 
 #define CATCH_CONFIG_MAIN
 
-#include "example/util.hpp"
+#include <mkok/evhelpers.hpp>
 #include "catch.hpp"
 
 static const char *REQUEST = "GET /robots.txt HTTP/1.0\r\n\r\n";
@@ -14,9 +14,9 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
     std::string output;
     std::string *po = &output;
     Var<EventBase> evbase = EventBase::create();
-    example::util::connect(
+    evhelpers::connect(
         evbase, "130.192.16.172:80", [evbase, po](Var<Bufferevent> bev) {
-            example::util::sendrecv(evbase, bev, REQUEST, po);
+            evhelpers::sendrecv(evbase, bev, REQUEST, po);
         }, &connected);
     EventBase::dispatch(evbase);
     REQUIRE(connected == true);
@@ -28,7 +28,7 @@ TEST_CASE("Connect to closed port using bufferevent") {
     std::string output;
     std::string *po = &output;
     Var<EventBase> evbase = EventBase::create();
-    example::util::connect(evbase,
+    evhelpers::connect(evbase,
                            "130.192.91.211:88", [evbase](Var<Bufferevent>) {
                                EventBase::loopbreak(evbase);
                            }, &connected);
@@ -44,10 +44,10 @@ TEST_CASE("Retrieve HTTPS resource using bufferevent") {
     std::string *po = &output;
 
     Var<EventBase> evbase = EventBase::create();
-    example::util::ssl_connect(
+    evhelpers::ssl_connect(
         evbase, "38.229.72.16:443",
-        example::util::SslContext::get(), [evbase, po](Var<Bufferevent> bev) {
-            example::util::sendrecv(evbase, bev, REQUEST, po);
+        evhelpers::SslContext::get(), [evbase, po](Var<Bufferevent> bev) {
+            evhelpers::sendrecv(evbase, bev, REQUEST, po);
         }, &connected, &ssl_connected);
     EventBase::dispatch(evbase);
 
@@ -63,8 +63,8 @@ TEST_CASE("Connect to port where SSL is not active") {
     std::string *po = &output;
 
     Var<EventBase> evbase = EventBase::create();
-    example::util::ssl_connect(
-        evbase, "130.192.16.172:80", example::util::SslContext::get(),
+    evhelpers::ssl_connect(
+        evbase, "130.192.16.172:80", evhelpers::SslContext::get(),
         [evbase](Var<Bufferevent>) { EventBase::loopbreak(evbase); },
         &connected, &ssl_connected);
     EventBase::dispatch(evbase);

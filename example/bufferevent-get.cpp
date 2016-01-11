@@ -5,18 +5,18 @@
 #include <functional>
 #include <iostream>
 #include <mkok/libevent.hpp>
+#include <mkok/evhelpers.hpp>
 #include <string>
 #include <sys/time.h>
-#include "util.hpp"
 
 int main() {
-    example::util::VERBOSE = true;
+    evhelpers::VERBOSE = true;
     std::string out;
     std::string *outp = &out;
     auto base = EventBase::create();
-    example::util::connect(
+    evhelpers::connect(
         base, "130.192.181.193:80", [base, outp](Var<Bufferevent> bev) {
-            example::util::sendrecv(base, bev, "GET /\r\n", outp);
+            evhelpers::sendrecv(base, bev, "GET /\r\n", outp);
         });
     EventBase::dispatch(base);
     std::cout << out << std::endl;

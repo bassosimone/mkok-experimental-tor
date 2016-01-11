@@ -5,11 +5,11 @@
 #include <functional>
 #include <iostream>
 #include <mkok/libevent.hpp>
+#include <mkok/evhelpers.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
-#include "util.hpp"
 
 #define USAGE "usage: %s [-A address] [-p port] [path]\n"
 
@@ -40,15 +40,15 @@ int main(int argc, char **argv) {
     }
     if (argc == 1) path = argv[0];
 
-    example::util::VERBOSE = true;
+    evhelpers::VERBOSE = true;
     std::string endpoint = address + ":" + port;
     std::string out;
     std::string *outp = &out;
     auto base = EventBase::create();
-    example::util::ssl_connect(
-        base, endpoint.c_str(), example::util::SslContext::get(),
+    evhelpers::ssl_connect(
+        base, endpoint.c_str(), evhelpers::SslContext::get(),
         [base, path, outp](Var<Bufferevent> bev) {
-            example::util::sendrecv(base, bev, "GET " + path + "\r\n", outp);
+            evhelpers::sendrecv(base, bev, "GET " + path + "\r\n", outp);
         });
     EventBase::dispatch(base);
     std::cout << out << std::endl;

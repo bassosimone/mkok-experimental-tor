@@ -2,3 +2,4 @@ libevent
 mkok-base
 mkok-evutil
 mkok-evbuffer
+mkok-evhelpers

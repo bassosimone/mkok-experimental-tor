@@ -10,10 +10,10 @@
 #include <functional>
 #include <memory>
 #include <mkok/libevent.hpp>
+#include <mkok/evhelpers.hpp>
 #include <string>
 #include <sys/time.h>
 #include <unistd.h>
-#include "util.hpp"
 
 struct Context {
     std::string buffered;
@@ -78,7 +78,7 @@ static void handle_io(Var<EventBase> base, evutil_socket_t conn,
 }
 
 int main() {
-    example::util::listen_once_and_dispatch(
+    evhelpers::listen_once_and_dispatch(
         [](Var<EventBase> base, evutil_socket_t conn) {
             handle_io(base, conn, std::make_shared<Context>(), 0);
         });
