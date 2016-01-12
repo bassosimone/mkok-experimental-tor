@@ -16,7 +16,9 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
     Var<EventBase> evbase = EventBase::create();
     evhelpers::connect(
         evbase, "130.192.16.172:80", [evbase, po](Var<Bufferevent> bev) {
-            evhelpers::sendrecv(evbase, bev, REQUEST, po);
+            evhelpers::sendrecv(bev, REQUEST, [evbase]() {
+                evhelpers::break_soon(evbase);
+            }, po);
         }, &connected);
     EventBase::dispatch(evbase);
     REQUIRE(connected == true);
@@ -47,7 +49,9 @@ TEST_CASE("Retrieve HTTPS resource using bufferevent") {
     evhelpers::ssl_connect(
         evbase, "38.229.72.16:443",
         evhelpers::SslContext::get(), [evbase, po](Var<Bufferevent> bev) {
-            evhelpers::sendrecv(evbase, bev, REQUEST, po);
+            evhelpers::sendrecv(bev, REQUEST, [evbase]() {
+                evhelpers::break_soon(evbase);
+            }, po);
         }, &connected, &ssl_connected);
     EventBase::dispatch(evbase);
 
