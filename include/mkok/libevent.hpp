@@ -333,8 +333,7 @@ class Bufferevent {
             MKOK_THROW(BuffereventOpensslFilterNewError);
         }
         underlying->bevp = nullptr; // Steal `bevp` from `underlying`
-        // Clear eventual self-references that `underlying` could have such that
-        // when we clear `ptr->underlying` this should be enough to destroy it
+        // Clear eventual self-references that `underlying` could have...
         setcb(underlying, nullptr, nullptr, nullptr);
         // TODO: investigate the issue of SSL clean shutdown
         //  see <http://www.wangafu.net/~nickm/libevent-book/>
