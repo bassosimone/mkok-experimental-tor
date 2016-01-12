@@ -48,7 +48,9 @@ int main(int argc, char **argv) {
     evhelpers::ssl_connect(
         base, endpoint.c_str(), evhelpers::SslContext::get(),
         [base, path, outp](Var<Bufferevent> bev) {
-            evhelpers::sendrecv(base, bev, "GET " + path + "\r\n", outp);
+            evhelpers::sendrecv(bev, "GET " + path + "\r\n", [base]() {
+                evhelpers::break_soon(base);
+            }, outp);
         });
     EventBase::dispatch(base);
     std::cout << out << std::endl;

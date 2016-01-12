@@ -16,7 +16,9 @@ int main() {
     auto base = EventBase::create();
     evhelpers::connect(
         base, "130.192.181.193:80", [base, outp](Var<Bufferevent> bev) {
-            evhelpers::sendrecv(base, bev, "GET /\r\n", outp);
+            evhelpers::sendrecv(bev, "GET /\r\n", [base]() {
+                evhelpers::break_soon(base);
+            }, outp);
         });
     EventBase::dispatch(base);
     std::cout << out << std::endl;

@@ -19,6 +19,8 @@ int main() {
                                            evutil_socket_t conn) {
         timeval tv{7, 7};
         auto bev = Bufferevent::socket_new(base, conn, BEV_OPT_CLOSE_ON_FREE);
-        evhelpers::sendrecv(base, bev, "", nullptr, &tv, true);
+        evhelpers::sendrecv(bev, "", [base]() {
+            evhelpers::break_soon(base);
+        }, nullptr, &tv, true);
     });
 }
