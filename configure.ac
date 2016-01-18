@@ -2,7 +2,7 @@
 # Measurement-kit is free software. See AUTHORS and LICENSE for more
 # information on the copying conditions.
 
-AC_INIT(mkok-libevent-ng, 0.1.0, bassosimone@gmail.com)
+AC_INIT(measurement-kit, 0.1.0, bassosimone@gmail.com)
 
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_MACRO_DIR([m4])
