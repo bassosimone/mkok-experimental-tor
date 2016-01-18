@@ -6,7 +6,6 @@ This repository contains
 [MeasurementKit](https://github.com/measurement-kit/measurement-kit)
 [C++11](https://en.wikipedia.org/wiki/C%2B%2B11) code for running Tor, along
 with improvements developed along with this feature.
-
 The plan is to merge this code in MeasurementKit as part of the release
 process of MeasurementKit 0.2.0.
 
