@@ -1,4 +1,4 @@
-# MeasurementKit Experimental Code for Running Tor
+# MeasurementKit Code for Running Tor
 
 [![Build Status](https://travis-ci.org/bassosimone/mkok-libevent-ng.svg?branch=master)](https://travis-ci.org/bassosimone/mkok-libevent-ng) [![Coverage Status](https://coveralls.io/repos/bassosimone/mkok-libevent-ng/badge.svg?branch=master&service=github)](https://coveralls.io/github/bassosimone/mkok-libevent-ng?branch=master)
 
