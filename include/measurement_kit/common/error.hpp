@@ -14,6 +14,10 @@ namespace mk {
 /// An error that occurred
 class Error : public std::exception {
   public:
+    const char *file = ""; ///< Offending file name
+    int lineno = 0;        ///< Offending line number
+    const char *func = ""; ///< Offending function
+
     /// Constructor with error code and OONI error
     Error(int e, std::string ooe) {
         if (e != 0 && ooe == "") {
@@ -46,26 +50,33 @@ class Error : public std::exception {
     std::string ooni_error_;
 };
 
-#define MK_DECLARE_ERROR(code, name, ooni_error)                  \
-class name ## Error : public Error {                                           \
-  public:                                                                      \
-    name ## Error() : Error(code, ooni_error) {}                               \
-}
+#define MK_DECLARE_ERROR(code, name, ooni_error)                               \
+    class name##Error : public Error {                                         \
+      public:                                                                  \
+        name##Error() : Error(code, ooni_error) {}                             \
+    }
 
-#define MK_THROW(classname) throw classname()
+#define MK_THROW(classname)                                                    \
+    do {                                                                       \
+        mk::Error error = classname();                                         \
+        error.file = __FILE__;                                                 \
+        error.lineno = __LINE__;                                               \
+        error.func = __func__;                                                 \
+        throw error;                                                           \
+    } while (0)
 
-MK_DECLARE_ERROR( 0, No, "");
-MK_DECLARE_ERROR( 1, Generic, "");
-MK_DECLARE_ERROR( 2, MaybeNotInitialized, "");
-MK_DECLARE_ERROR( 3, NullPointer, "");
-MK_DECLARE_ERROR( 4, MallocFailed, "");
+MK_DECLARE_ERROR(0, No, "");
+MK_DECLARE_ERROR(1, Generic, "");
+MK_DECLARE_ERROR(2, MaybeNotInitialized, "");
+MK_DECLARE_ERROR(3, NullPointer, "");
+MK_DECLARE_ERROR(4, MallocFailed, "");
 
-MK_DECLARE_ERROR( 5, EvutilMakeSocketNonblocking, "");
-MK_DECLARE_ERROR( 6, EvutilParseSockaddrPort, "");
-MK_DECLARE_ERROR( 7, EvutilMakeListenSocketReuseable, "");
+MK_DECLARE_ERROR(5, EvutilMakeSocketNonblocking, "");
+MK_DECLARE_ERROR(6, EvutilParseSockaddrPort, "");
+MK_DECLARE_ERROR(7, EvutilMakeListenSocketReuseable, "");
 
-MK_DECLARE_ERROR( 8, EventBaseDispatch, "");
-MK_DECLARE_ERROR( 9, EventBaseLoop, "");
+MK_DECLARE_ERROR(8, EventBaseDispatch, "");
+MK_DECLARE_ERROR(9, EventBaseLoop, "");
 MK_DECLARE_ERROR(10, EventBaseLoopbreak, "");
 MK_DECLARE_ERROR(11, EventBaseOnce, "");
 
