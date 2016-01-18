@@ -2,11 +2,13 @@
 // Measurement-kit is free software. See AUTHORS and LICENSE for more
 // information on the copying conditions.
 
-#define MKOK_LIBEVENT_ENABLE_MOCK
+#define SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
 #define CATCH_CONFIG_MAIN
 
-#include <mkok/libevent.hpp>
+#include "src/common/libevent-core.hpp"
 #include "catch.hpp"
+
+using namespace mk;
 
 // EventBase
 

@@ -1,0 +1,73 @@
+
+test_common_libevent_core_integration_SOURCES = test/common/libevent-core-integration.cpp
+test_common_libevent_core_integration_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/common/libevent-core-integration
+    TESTS += test/common/libevent-core-integration
+endif
+test_common_libevent_core_unit_SOURCES = test/common/libevent-core-unit.cpp
+test_common_libevent_core_unit_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/common/libevent-core-unit
+    TESTS += test/common/libevent-core-unit
+endif
+test_common_libevent_evbuffer_SOURCES = test/common/libevent-evbuffer.cpp
+test_common_libevent_evbuffer_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/common/libevent-evbuffer
+    TESTS += test/common/libevent-evbuffer
+endif
+test_common_libevent_evutil_SOURCES = test/common/libevent-evutil.cpp
+test_common_libevent_evutil_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/common/libevent-evutil
+    TESTS += test/common/libevent-evutil
+endif
+test_http_http_parser_integration_SOURCES = test/http/http-parser-integration.cpp
+test_http_http_parser_integration_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/http/http-parser-integration
+    TESTS += test/http/http-parser-integration
+endif
+test_http_http_parser_unit_SOURCES = test/http/http-parser-unit.cpp
+test_http_http_parser_unit_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/http/http-parser-unit
+    TESTS += test/http/http-parser-unit
+endif
+test_net_socks_integration_SOURCES = test/net/socks-integration.cpp
+test_net_socks_integration_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/net/socks-integration
+    TESTS += test/net/socks-integration
+endif
+test_net_socks_unit_SOURCES = test/net/socks-unit.cpp
+test_net_socks_unit_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/net/socks-unit
+    TESTS += test/net/socks-unit
+endif
+test_tor_onion_ctrl_integration_SOURCES = test/tor/onion-ctrl-integration.cpp
+test_tor_onion_ctrl_integration_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/tor/onion-ctrl-integration
+    TESTS += test/tor/onion-ctrl-integration
+endif
+test_tor_onion_ctrl_unit_SOURCES = test/tor/onion-ctrl-unit.cpp
+test_tor_onion_ctrl_unit_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/tor/onion-ctrl-unit
+    TESTS += test/tor/onion-ctrl-unit
+endif
+test_tor_onion_poller_integration_enable_disable_SOURCES = test/tor/onion-poller-integration-enable-disable.cpp
+test_tor_onion_poller_integration_enable_disable_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/tor/onion-poller-integration-enable-disable
+    TESTS += test/tor/onion-poller-integration-enable-disable
+endif
+test_tor_onion_poller_integration_stop_SOURCES = test/tor/onion-poller-integration-stop.cpp
+test_tor_onion_poller_integration_stop_LDADD = libmeasurement_kit.la
+if BUILD_TESTS
+    check_PROGRAMS += test/tor/onion-poller-integration-stop
+    TESTS += test/tor/onion-poller-integration-stop
+endif

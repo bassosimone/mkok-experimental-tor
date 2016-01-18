@@ -9,10 +9,11 @@
 #include <event2/event.h>
 #include <event2/util.h>
 #include <functional>
-#include <mkok/evhelpers.hpp>
-#include <mkok/libevent.hpp>
 #include <stddef.h>
 #include <sys/time.h>
+#include "src/common/evhelpers.hpp"
+
+using namespace mk;
 
 int main() {
     evhelpers::listen_once_and_dispatch([](Var<EventBase> base,

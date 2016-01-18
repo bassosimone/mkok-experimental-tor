@@ -4,8 +4,10 @@
 
 #define CATCH_CONFIG_MAIN
 
-#include <mkok/evhelpers.hpp>
+#include "src/common/evhelpers.hpp"
 #include "catch.hpp"
+
+using namespace mk;
 
 static const char *REQUEST = "GET /robots.txt HTTP/1.0\r\n\r\n";
 

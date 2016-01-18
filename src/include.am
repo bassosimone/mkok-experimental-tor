@@ -1,0 +1,11 @@
+
+commonincludedir = $(includedir)/measurement_kit/common
+commoninclude_HEADERS = # Empty
+commoninclude_HEADERS += include/measurement_kit/common/error.hpp
+commoninclude_HEADERS += include/measurement_kit/common/func.hpp
+commoninclude_HEADERS += include/measurement_kit/common/var.hpp
+httpincludedir = $(includedir)/measurement_kit/http
+httpinclude_HEADERS = # Empty
+httpinclude_HEADERS += include/measurement_kit/http/error.hpp
+libmeasurement_kit_la_SOURCES = # empty
+libmeasurement_kit_la_SOURCES += src/common/libevent-core.cpp

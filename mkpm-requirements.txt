@@ -1,5 +1,3 @@
-libevent
-mkok-base
-mkok-evutil
-mkok-evbuffer
-mkok-evhelpers
+Catch
+http-parser
+tor

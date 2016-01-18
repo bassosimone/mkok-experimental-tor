@@ -4,14 +4,15 @@
 
 #include <functional>
 #include <iostream>
-#include <mkok/libevent.hpp>
-#include <mkok/evhelpers.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+#include "src/common/evhelpers.hpp"
 
 #define USAGE "usage: %s [-A address] [-p port] [path]\n"
+
+using namespace mk;
 
 int main(int argc, char **argv) {
     std::string address = "130.192.181.193";

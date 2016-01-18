@@ -1,2 +1,13 @@
-integration
-unit
+
+libevent-core-integration
+libevent-core-unit
+libevent-evbuffer
+libevent-evutil
+http-parser-integration
+http-parser-unit
+socks-integration
+socks-unit
+onion-ctrl-integration
+onion-ctrl-unit
+onion-poller-integration-enable-disable
+onion-poller-integration-stop

@@ -4,10 +4,11 @@
 
 #include <functional>
 #include <iostream>
-#include <mkok/libevent.hpp>
-#include <mkok/evhelpers.hpp>
 #include <string>
 #include <sys/time.h>
+#include "src/common/evhelpers.hpp"
+
+using namespace mk;
 
 int main() {
     evhelpers::VERBOSE = true;
