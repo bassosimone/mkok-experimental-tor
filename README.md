@@ -44,7 +44,7 @@ following enhancements with respect to it:
 
 - [new socks5 code based on libevent wrappers](https://github.com/bassosimone/mkok-experimental-tor/blob/master/src/net/socks.hpp)
 
-- better integration with new autotools and automatic download, patching,
+- better integration with autotools and automatic download, patching,
   and building of the dependencies [using the mkpm script](https://github.com/bassosimone/mkok-experimental-tor/tree/master/script)
 
 Compared to code in MeasurementKit, this code also:
