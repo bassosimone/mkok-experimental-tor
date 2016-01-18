@@ -58,7 +58,7 @@ class Error : public std::exception {
 
 #define MK_THROW(classname)                                                    \
     do {                                                                       \
-        mk::Error error = classname();                                         \
+        auto error = classname();                                              \
         error.file = __FILE__;                                                 \
         error.lineno = __LINE__;                                               \
         error.func = __func__;                                                 \
