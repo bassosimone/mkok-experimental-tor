@@ -171,6 +171,7 @@ class Bufferevent {
     Var<EventBase> evbase;
 #ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
     LibeventMock *mockp = nullptr;
+    Var<Bufferevent> *the_opaque = nullptr; // To avoid leak in regress tests
 #endif
 
     Bufferevent() {}
@@ -210,6 +211,9 @@ class Bufferevent {
             MK_THROW(BuffereventSocketNewError);
         }
         Var<Bufferevent> *varp = new Var<Bufferevent>(ptr);
+#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
+        ptr->the_opaque = varp;
+#endif
         // We pass `varp` so C code keeps us alive
         call(bufferevent_setcb, ptr->bevp, mk_libevent_bev_read,
              mk_libevent_bev_write, mk_libevent_bev_event, varp);
@@ -296,6 +300,9 @@ class Bufferevent {
         //  see <http://www.wangafu.net/~nickm/libevent-book/>
         //   and especially R6a, 'avanced bufferevents'
         Var<Bufferevent> *varp = new Var<Bufferevent>(ptr);
+#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
+        ptr->the_opaque = varp;
+#endif
         // We pass `varp` so C code keeps us alive
         call(bufferevent_setcb, ptr->bevp, mk_libevent_bev_read,
              mk_libevent_bev_write, mk_libevent_bev_event, varp);
