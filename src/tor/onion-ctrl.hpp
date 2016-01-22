@@ -90,9 +90,10 @@ class OnionCtrlMock {
 
     class {
       public:
-#define XX(name, signature) std::function<signature> name = evutil::name
-        XX(parse_sockaddr_port, Error(std::string, sockaddr *, int *));
-#undef XX
+        std::function<Error(std::string, sockaddr *, int *)>
+            parse_sockaddr_port = [](std::string s, sockaddr *p, int *n) {
+                return evutil::parse_sockaddr_port(s, p, n);
+            };
     } evutil_impl;
 };
 
