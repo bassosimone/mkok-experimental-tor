@@ -1,65 +1,86 @@
 
 example_common_evhelpers_bufferevent_echo_SOURCES = example/common/evhelpers-bufferevent-echo.cpp
+example_common_evhelpers_bufferevent_echo_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/common/evhelpers-bufferevent-echo
 endif
 example_common_evhelpers_bufferevent_get_ssl_SOURCES = example/common/evhelpers-bufferevent-get-ssl.cpp
+example_common_evhelpers_bufferevent_get_ssl_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/common/evhelpers-bufferevent-get-ssl
 endif
 example_common_evhelpers_bufferevent_get_SOURCES = example/common/evhelpers-bufferevent-get.cpp
+example_common_evhelpers_bufferevent_get_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/common/evhelpers-bufferevent-get
 endif
 example_common_evhelpers_event_echo_SOURCES = example/common/evhelpers-event-echo.cpp
+example_common_evhelpers_event_echo_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/common/evhelpers-event-echo
 endif
+example_common_object_SOURCES = example/common/object.cpp
+example_common_object_LDADD = libmeasurement_kit.la
+if BUILD_EXAMPLES
+    noinst_PROGRAMS += example/common/object
+endif
 example_net_socks_get_ssl_SOURCES = example/net/socks-get-ssl.cpp
+example_net_socks_get_ssl_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/net/socks-get-ssl
 endif
 example_net_socks_get_SOURCES = example/net/socks-get.cpp
+example_net_socks_get_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/net/socks-get
 endif
 example_tor_onion_ctrl_authenticate_SOURCES = example/tor/onion-ctrl-authenticate.cpp
+example_tor_onion_ctrl_authenticate_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-ctrl-authenticate
 endif
 example_tor_onion_ctrl_getconf_socks_port_SOURCES = example/tor/onion-ctrl-getconf_socks_port.cpp
+example_tor_onion_ctrl_getconf_socks_port_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-ctrl-getconf_socks_port
 endif
 example_tor_onion_ctrl_getinfo_status_bootstrap_phase_SOURCES = example/tor/onion-ctrl-getinfo_status_bootstrap_phase.cpp
+example_tor_onion_ctrl_getinfo_status_bootstrap_phase_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-ctrl-getinfo_status_bootstrap_phase
 endif
 example_tor_onion_ctrl_setevents_client_status_SOURCES = example/tor/onion-ctrl-setevents_client_status.cpp
+example_tor_onion_ctrl_setevents_client_status_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-ctrl-setevents_client_status
 endif
 example_tor_onion_ctrl_signal_shutdown_SOURCES = example/tor/onion-ctrl-signal_shutdown.cpp
+example_tor_onion_ctrl_signal_shutdown_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-ctrl-signal_shutdown
 endif
 example_tor_onion_ctrl_toggle_disable_network_SOURCES = example/tor/onion-ctrl-toggle_disable_network.cpp
+example_tor_onion_ctrl_toggle_disable_network_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-ctrl-toggle_disable_network
 endif
 example_tor_onion_poller_enable_disable_SOURCES = example/tor/onion-poller-enable-disable.cpp
+example_tor_onion_poller_enable_disable_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-poller-enable-disable
 endif
 example_tor_onion_poller_get_ssl_SOURCES = example/tor/onion-poller-get-ssl.cpp
+example_tor_onion_poller_get_ssl_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-poller-get-ssl
 endif
 example_tor_onion_poller_get_SOURCES = example/tor/onion-poller-get.cpp
+example_tor_onion_poller_get_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-poller-get
 endif
 example_tor_onion_poller_stop_SOURCES = example/tor/onion-poller-stop.cpp
+example_tor_onion_poller_stop_LDADD = libmeasurement_kit.la
 if BUILD_EXAMPLES
     noinst_PROGRAMS += example/tor/onion-poller-stop
 endif

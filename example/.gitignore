@@ -3,6 +3,7 @@ evhelpers-bufferevent-echo
 evhelpers-bufferevent-get-ssl
 evhelpers-bufferevent-get
 evhelpers-event-echo
+object
 socks-get-ssl
 socks-get
 onion-ctrl-authenticate

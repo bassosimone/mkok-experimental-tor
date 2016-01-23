@@ -13,6 +13,7 @@ for source in `ls example/*/*.cpp`; do
     binary=`echo $source | sed -e 's|.cpp$||g'`
     slug=`echo $binary | sed -e 's|/|_|g' -e 's|-|_|g'`
     echo "${slug}_SOURCES = $source" >> example/include.am
+    echo "${slug}_LDADD = libmeasurement_kit.la" >> example/include.am
     echo "if BUILD_EXAMPLES" >> example/include.am
     echo "    noinst_PROGRAMS += $binary" >> example/include.am
     echo "endif" >> example/include.am
