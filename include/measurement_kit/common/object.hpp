@@ -61,14 +61,9 @@ class Object {
     Maybe<List> as_list() const;     ///< Converts object to list
     Maybe<Str> as_str() const;       ///< Converts object to str
 
-    /// Return type of object.
-    ObjectType get_type() const;
-
-    /// Lazy switch through all the possible types.
-    ObjectTypeSwitch switch_type() const;
-
-    /// Lower-than comparator (required to implement Dict).
-    bool operator<(Object other) const;
+    ObjectType get_type() const;          ///< Return object type
+    ObjectTypeSwitch switch_type() const; ///< Lazy switch object type
+    bool operator<(Object other) const;   ///< Lower-than operator (for Dict)
 
     /// Syntactic sugar to walk through dict.
     static void for_each(Dict dict, std::function<void(Object, Object)> func) {

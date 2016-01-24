@@ -16,6 +16,21 @@ class ObjectImpl {
     virtual Str *get_str() { return nullptr; }
 };
 
+// For every type that we support (Dict, Double, Int, List, Str), this
+// macro generates the following pieces of code:
+//
+// 1. The class implementing that object (called ObjectDict, etc.)
+//
+// 2. The constructor for Object() that takes in input the C++ type that
+//    is wrapped by an object (e.g., Dict for ObjectDict)
+//
+// 3. The boolean function to check for type (e.g. Object::is_dict())
+//
+// 4. The function to maybe-cast an Object into a specified object,
+//    for example Object::as_dict() returns a Maybe<Dict>
+//
+// The first parameter is the type in camel case (e.g. Dict, Double) and
+// the second parameter is the type in lower case (dict, double).
 #define XX(Type, type)                                                         \
                                                                                \
     class Object##Type : public ObjectImpl {                                   \
@@ -85,6 +100,12 @@ ObjectTypeSwitch::ObjectTypeSwitch(Var<ObjectImpl> k) : ctx(k) {}
 
 ObjectTypeSwitch::~ObjectTypeSwitch() {
 
+// This macro handles the case whether the object is of a specific type and,
+// if this is the case, dispatches execution either to the function registered
+// for a specific type (if set) or to the otherwise function (if set).
+//
+// The first parameter is the type in camel case (e.g. Dict, Double) and
+// the second parameter is the type in lower case (dict, double).
 #define XX(Type, type)                                                         \
     do {                                                                       \
         if (ctx->get_type() == ObjectType::Type) {                             \
@@ -107,6 +128,8 @@ ObjectTypeSwitch::~ObjectTypeSwitch() {
 
 #undef XX
 
+    // This is similar to the above macro but without argument passed to the
+    // function that shall handle the case where type is None
     if (ctx->get_type() == ObjectType::None) {
         if (case_none_fn) {
             case_none_fn();
