@@ -67,8 +67,9 @@ void break_soon(Var<EventBase> evbase);
 void break_soon(Var<EventBase> evbase) {
     timeval timeo;
     timeo.tv_sec = timeo.tv_usec = 2;
-    EventBase::once(evbase, -1, EV_TIMEOUT,
-                    [evbase](short) { EventBase::loopbreak(evbase); }, &timeo);
+    evbase->once(-1, EV_TIMEOUT, [evbase](short) {
+        evbase->loopbreak();
+    }, &timeo);
 }
 
 void connect(Var<EventBase> evbase, const char *endpoint,
@@ -264,7 +265,7 @@ void listen_once_and_dispatch(
     // Prepare to receive a single ACCEPT event
 
     Var<EventBase> base = EventBase::create();
-    EventBase::once(base, sock, EV_READ, [base, callback, sock](short) {
+    base->once(sock, EV_READ, [base, callback, sock](short) {
         warnx("accept...");
         evutil_socket_t conn = accept(sock, nullptr, nullptr);
         if (conn < 0) {
@@ -281,7 +282,7 @@ void listen_once_and_dispatch(
     // Dispatch I/O events
 
     warnx("loop...");
-    EventBase::dispatch(base);
+    base->dispatch();
     warnx("loop... done");
 
     // Cleanup resources

@@ -21,6 +21,6 @@ int main() {
                 evhelpers::break_soon(base);
             }, outp);
         });
-    EventBase::dispatch(base);
+    base->dispatch();
     std::cout << out << std::endl;
 }

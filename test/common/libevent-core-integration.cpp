@@ -22,7 +22,7 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
                 evhelpers::break_soon(evbase);
             }, po);
         }, &connected);
-    EventBase::dispatch(evbase);
+    evbase->dispatch();
     REQUIRE(connected == true);
     REQUIRE(output != "");
 }
@@ -34,9 +34,9 @@ TEST_CASE("Connect to closed port using bufferevent") {
     Var<EventBase> evbase = EventBase::create();
     evhelpers::connect(evbase,
                            "130.192.91.211:88", [evbase](Var<Bufferevent>) {
-                               EventBase::loopbreak(evbase);
+                               evbase->loopbreak();
                            }, &connected);
-    EventBase::dispatch(evbase);
+    evbase->dispatch();
     REQUIRE(output == "");
     REQUIRE(connected == false);
 }
@@ -55,7 +55,7 @@ TEST_CASE("Retrieve HTTPS resource using bufferevent") {
                 evhelpers::break_soon(evbase);
             }, po);
         }, &connected, &ssl_connected);
-    EventBase::dispatch(evbase);
+    evbase->dispatch();
 
     REQUIRE(connected == true);
     REQUIRE(ssl_connected == true);
@@ -71,9 +71,9 @@ TEST_CASE("Connect to port where SSL is not active") {
     Var<EventBase> evbase = EventBase::create();
     evhelpers::ssl_connect(
         evbase, "130.192.16.172:80", evhelpers::SslContext::get(),
-        [evbase](Var<Bufferevent>) { EventBase::loopbreak(evbase); },
+        [evbase](Var<Bufferevent>) { evbase->loopbreak(); },
         &connected, &ssl_connected);
-    EventBase::dispatch(evbase);
+    evbase->dispatch();
 
     REQUIRE(connected == true);
     REQUIRE(ssl_connected == false);
@@ -86,11 +86,11 @@ TEST_CASE("event_base_once works") {
     timeo.tv_sec = 1;
     timeo.tv_usec = 17;
     Var<EventBase> evbase = EventBase::create();
-    EventBase::once(evbase, -1, EV_TIMEOUT, [&called, evbase](short w) {
+    evbase->once(-1, EV_TIMEOUT, [&called, evbase](short w) {
         REQUIRE(w == EV_TIMEOUT);
-        EventBase::loopbreak(evbase);
+        evbase->loopbreak();
         called = true;
     }, &timeo);
-    EventBase::dispatch(evbase);
+    evbase->dispatch();
     REQUIRE(called == true);
 }

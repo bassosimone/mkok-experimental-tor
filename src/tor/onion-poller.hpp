@@ -49,7 +49,7 @@ class OnionPoller {
     static void break_soon(Var<OnionPoller> poller) {
         timeval timeo;
         timeo.tv_sec = timeo.tv_usec = 1;
-        EventBase::once(poller->evbase, -1, EV_TIMEOUT,
+        poller->evbase->once(-1, EV_TIMEOUT,
                         [poller](short) { break_loop(poller); }, &timeo);
     }
 
@@ -116,9 +116,8 @@ class OnionPoller {
         timeval timeo;
         memset(&timeo, 0, sizeof(timeo));
         timeo.tv_sec = 1;
-        EventBase::once(
-            poller->evbase, -1,
-            EV_TIMEOUT, [cb, ctrl, counter, poller, timeout](short) {
+        poller->evbase->once(
+            -1, EV_TIMEOUT, [cb, ctrl, counter, poller, timeout](short) {
                 OnionCtrl::getinfo_status_bootstrap_phase_as_int(
                     ctrl, [cb, ctrl, counter, poller,
                            timeout](OnionStatus status, int progress) {

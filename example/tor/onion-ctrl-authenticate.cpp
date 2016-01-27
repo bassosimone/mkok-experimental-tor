@@ -11,7 +11,7 @@
 int main(int argc, char **argv) {
     run_main_loop(argc, argv, [](OnionStatus status, Var<OnionCtrl> ctrl) {
         std::cout << "result: " << (int)status << "\n";
-        EventBase::loopbreak(ctrl->evbase);
+        ctrl->evbase->loopbreak();
         OnionCtrl::close(ctrl);
     });
 }

@@ -53,6 +53,6 @@ int main(int argc, char **argv) {
                 evhelpers::break_soon(base);
             }, outp);
         });
-    EventBase::dispatch(base);
+    base->dispatch();
     std::cout << out << std::endl;
 }

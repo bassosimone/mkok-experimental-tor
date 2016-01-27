@@ -60,5 +60,5 @@ static void run_main_loop(int argc, char **argv,
         ctrl, [callback, ctrl](OnionStatus status) {
             callback(status, ctrl);
         }, auth_token, port, address, timeout);
-    EventBase::dispatch(evbase);
+    evbase->dispatch();
 }

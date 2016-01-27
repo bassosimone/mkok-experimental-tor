@@ -65,13 +65,6 @@ class LibeventMock {
        bufferevent *(event_base *, evutil_socket_t, int));
     XX(bufferevent_write, int(bufferevent *, const void *, size_t));
     XX(bufferevent_write_buffer, int(bufferevent *, evbuffer *));
-    XX(event_base_dispatch, int(event_base *));
-    XX(event_base_free, void(event_base *));
-    XX(event_base_loop, int(event_base *, int));
-    XX(event_base_loopbreak, int(event_base *));
-    XX(event_base_new, event_base *());
-    XX(event_base_once, int(event_base *, evutil_socket_t, short,
-                            event_callback_fn, void *, const timeval *));
 #undef XX
 };
 
@@ -93,70 +86,71 @@ class EventBase {
   public:
     event_base *evbase = nullptr;
     bool owned = false;
-#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-    LibeventMock *mockp = nullptr;
-#endif
 
     EventBase() {}
     EventBase(EventBase &) = delete;
     EventBase &operator=(EventBase &) = delete;
     EventBase(EventBase &&) = delete;
     EventBase &operator=(EventBase &&) = delete;
+    ~EventBase() {}
 
-    ~EventBase() {
-        if (owned && evbase != nullptr) {
-            call(event_base_free, evbase);
-            owned = false;
-            evbase = nullptr;
-        }
-    }
-
-    static Var<EventBase> assign(MockPtrArg event_base *pointer, bool owned) {
+    template <void (*func)(event_base *) = ::event_base_free>
+    static Var<EventBase> assign(event_base *pointer, bool owned) {
         if (pointer == nullptr) {
             MK_THROW(NullPointerError);
         }
-        Var<EventBase> base(new EventBase);
+        Var<EventBase> base(new EventBase, [](EventBase *ptr) {
+            if (ptr->owned && ptr->evbase != nullptr) {
+                func(ptr->evbase);
+                ptr->evbase = nullptr;
+                ptr->owned = false;
+            }
+            delete ptr;
+        });
         base->evbase = pointer;
         base->owned = owned;
-#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-        base->mockp = mockp;
-#endif
         return base;
     }
 
-    static Var<EventBase> create(MockPtrArg0) {
-        return assign(MockPtrName call(event_base_new), true);
+    template <event_base *(*construct)() = ::event_base_new,
+              void (*destruct)(event_base *) = ::event_base_free>
+    static Var<EventBase> create() {
+        return assign<destruct>(construct(), true);
     }
 
-    static int dispatch(MockPtrArg Var<EventBase> base) {
-        int ctrl = call(event_base_dispatch, base->evbase);
+    template <int (*func)(event_base *) = ::event_base_dispatch>
+    int dispatch() {
+        int ctrl = func(evbase);
         if (ctrl != 0 && ctrl != 1) {
             MK_THROW(EventBaseDispatchError);
         }
         return ctrl;
     }
 
-    static int loop(MockPtrArg Var<EventBase> base, int flags) {
-        int ctrl = call(event_base_loop, base->evbase, flags);
+    template <int (*func)(event_base *, int) = ::event_base_loop>
+    int loop(int flags) {
+        int ctrl = func(evbase, flags);
         if (ctrl != 0 && ctrl != 1) {
             MK_THROW(EventBaseLoopError);
         }
         return ctrl;
     }
 
-    static void loopbreak(MockPtrArg Var<EventBase> base) {
-        if (call(event_base_loopbreak, base->evbase) != 0) {
+    template <int (*func)(event_base *) = ::event_base_loopbreak>
+    void loopbreak() {
+        if (func(evbase) != 0) {
             MK_THROW(EventBaseLoopbreakError);
         }
     }
 
-    static void once(MockPtrArg Var<EventBase> base, evutil_socket_t sock,
-                     short what, std::function<void(short)> callback,
-                     const timeval *timeo = nullptr) {
-        auto func = new std::function<void(short)>(callback);
-        if (call(event_base_once, base->evbase, sock, what,
-                 mk_libevent_event_cb, func, timeo) != 0) {
-            delete func;
+    template <int (*func)(event_base *, evutil_socket_t, short,
+                          event_callback_fn, void *,
+                          const timeval *) = ::event_base_once>
+    void once(evutil_socket_t sock, short what, std::function<void(short)> cb,
+              const timeval *timeo = nullptr) {
+        auto cbp = new std::function<void(short)>(cb);
+        if (func(evbase, sock, what, mk_libevent_event_cb, cbp, timeo) != 0) {
+            delete cbp;
             MK_THROW(EventBaseOnceError);
         }
     }
@@ -346,19 +340,22 @@ static void mk_libevent_event_cb(evutil_socket_t, short w, void *p) {
 static void mk_libevent_bev_is_ignored_by_cxx(mk::Var<mk::Bufferevent> *varp);
 
 static void mk_libevent_bev_read(bufferevent *, void *ptr) {
-    mk::Var<mk::Bufferevent> *varp = static_cast<mk::Var<mk::Bufferevent> *>(ptr);
+    mk::Var<mk::Bufferevent> *varp =
+        static_cast<mk::Var<mk::Bufferevent> *>(ptr);
     if ((*varp)->read_cb) (*varp)->read_cb();
     if (varp->unique()) mk_libevent_bev_is_ignored_by_cxx(varp);
 }
 
 static void mk_libevent_bev_write(bufferevent *, void *ptr) {
-    mk::Var<mk::Bufferevent> *varp = static_cast<mk::Var<mk::Bufferevent> *>(ptr);
+    mk::Var<mk::Bufferevent> *varp =
+        static_cast<mk::Var<mk::Bufferevent> *>(ptr);
     if ((*varp)->write_cb) (*varp)->write_cb();
     if (varp->unique()) mk_libevent_bev_is_ignored_by_cxx(varp);
 }
 
 static void mk_libevent_bev_event(bufferevent *, short what, void *ptr) {
-    mk::Var<mk::Bufferevent> *varp = static_cast<mk::Var<mk::Bufferevent> *>(ptr);
+    mk::Var<mk::Bufferevent> *varp =
+        static_cast<mk::Var<mk::Bufferevent> *>(ptr);
     if ((*varp)->event_cb) (*varp)->event_cb(what);
     if (varp->unique()) mk_libevent_bev_is_ignored_by_cxx(varp);
 }
@@ -373,13 +370,13 @@ static void mk_libevent_bev_is_ignored_by_cxx(mk::Var<mk::Bufferevent> *varp) {
     if ((*varp)->bevp != nullptr) {
         call(bufferevent_setcb, (*varp)->bevp, nullptr, nullptr, nullptr,
              nullptr);
-        if (call(bufferevent_disable, (*varp)->bevp, EV_READ|EV_WRITE) != 0) {
+        if (call(bufferevent_disable, (*varp)->bevp, EV_READ | EV_WRITE) != 0) {
             MK_THROW(mk::BuffereventDisableError);
         }
     }
     timeval timeo;
     timeo.tv_sec = timeo.tv_usec = 0;
-    mk::EventBase::once(MockPtrName (*varp)->evbase, -1, EV_TIMEOUT, [varp](short) {
+    (*varp)->evbase->once(-1, EV_TIMEOUT, [varp](short) {
         delete varp;
     }, &timeo);
 }

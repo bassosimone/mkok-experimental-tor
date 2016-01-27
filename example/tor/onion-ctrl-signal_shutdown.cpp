@@ -10,13 +10,13 @@ int main(int argc, char **argv) {
     run_main_loop(argc, argv, [](OnionStatus status, Var<OnionCtrl> ctrl) {
         std::cout << "status: " << (int)status << "\n";
         if (status != OnionStatus::OK) {
-            EventBase::loopbreak(ctrl->evbase);
+            ctrl->evbase->loopbreak();
             return;
         }
         OnionCtrl::signal_shutdown(ctrl, [ctrl](OnionStatus status) {
             std::cout << "status: " << (int)status << "\n";
             OnionCtrl::close(ctrl);
-            EventBase::loopbreak(ctrl->evbase);
+            ctrl->evbase->loopbreak();
         });
     });
 }

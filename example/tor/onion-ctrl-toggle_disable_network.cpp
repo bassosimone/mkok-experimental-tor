@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
     run_main_loop(argc, argv, [](OnionStatus status, Var<OnionCtrl> ctrl) {
         std::cout << "status: " << (int)status << "\n";
         if (status != OnionStatus::OK) {
-            EventBase::loopbreak(ctrl->evbase);
+            ctrl->evbase->loopbreak();
             return;
         }
         OnionCtrl::getconf_disable_network(
@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
                     ctrl, !is_disabled, [ctrl](OnionStatus status) {
                         std::cout << "status: " << (int)status << "\n";
                         OnionCtrl::close(ctrl);
-                        EventBase::loopbreak(ctrl->evbase);
+                        ctrl->evbase->loopbreak();
                     });
             });
     });

@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
     run_main_loop(argc, argv, [](OnionStatus status, Var<OnionCtrl> ctrl) {
         std::cout << "status: " << (int)status << "\n";
         if (status != OnionStatus::OK) {
-            EventBase::loopbreak(ctrl->evbase);
+            ctrl->evbase->loopbreak();
             return;
         }
         OnionCtrl::getconf_socks_port(
@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
                 std::cout << "status: " << (int)status << "\n";
                 std::cout << "port: " << port << "\n";
                 OnionCtrl::close(ctrl);
-                EventBase::loopbreak(ctrl->evbase);
+                ctrl->evbase->loopbreak();
             });
     });
 }

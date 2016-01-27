@@ -71,7 +71,7 @@ static void handle_io(Var<EventBase> base, evutil_socket_t conn,
     }
 
     pending |= EV_TIMEOUT;
-    EventBase::once(base, conn, pending, [base, conn, ctx](short what) {
+    base->once(conn, pending, [base, conn, ctx](short what) {
         handle_io(base, conn, ctx, what);
     }, &ctx->timeout);
 }
