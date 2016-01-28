@@ -43,6 +43,7 @@ class Evbuffer {
                 ptr->owned = false;
                 ptr->evbuf = nullptr;
             }
+            delete ptr;
         });
         evbuf->evbuf = pointer;
         evbuf->owned = owned;
