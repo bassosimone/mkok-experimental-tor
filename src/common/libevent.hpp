@@ -15,6 +15,7 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <measurement_kit/common/constraints.hpp>
 #include <measurement_kit/common/error.hpp>
 #include <measurement_kit/common/func.hpp>
 #include <measurement_kit/common/var.hpp>
@@ -72,16 +73,12 @@ void make_listen_socket_reuseable(evutil_socket_t s) {
 
 } // namespace evutil
 
-class EventBase {
+class EventBase : public NonCopyable, public NonMovable {
   public:
     event_base *evbase = nullptr;
     bool owned = false;
 
     EventBase() {}
-    EventBase(EventBase &) = delete;
-    EventBase &operator=(EventBase &) = delete;
-    EventBase(EventBase &&) = delete;
-    EventBase &operator=(EventBase &&) = delete;
     ~EventBase() {}
 
     template <void (*func)(event_base *) = ::event_base_free>
@@ -146,16 +143,12 @@ class EventBase {
     }
 };
 
-class Evbuffer {
+class Evbuffer : public NonCopyable, public NonMovable {
   public:
     evbuffer *evbuf = nullptr;
     bool owned = false;
 
     Evbuffer() {}
-    Evbuffer(Evbuffer &) = delete;
-    Evbuffer &operator=(Evbuffer &) = delete;
-    Evbuffer(Evbuffer &&) = delete;
-    Evbuffer &operator=(Evbuffer &&) = delete;
     ~Evbuffer() {}
 
     template <void (*func)(evbuffer *) = ::evbuffer_free>
@@ -310,7 +303,7 @@ class Evbuffer {
     }
 };
 
-class Bufferevent {
+class Bufferevent : public NonCopyable, public NonMovable {
   public:
     Func<void(short)> event_cb;
     Func<void()> read_cb;
@@ -322,10 +315,6 @@ class Bufferevent {
 #endif
 
     Bufferevent() {}
-    Bufferevent(Bufferevent &) = delete;
-    Bufferevent &operator=(Bufferevent &) = delete;
-    Bufferevent(Bufferevent &&) = delete;
-    Bufferevent &operator=(Bufferevent &&) = delete;
     ~Bufferevent() {}
 
     static std::string event_string(short what) {

@@ -1,6 +1,7 @@
 
 commonincludedir = $(includedir)/measurement_kit/common
 commoninclude_HEADERS = # Empty
+commoninclude_HEADERS += include/measurement_kit/common/constraints.hpp
 commoninclude_HEADERS += include/measurement_kit/common/error.hpp
 commoninclude_HEADERS += include/measurement_kit/common/func.hpp
 commoninclude_HEADERS += include/measurement_kit/common/maybe.hpp
