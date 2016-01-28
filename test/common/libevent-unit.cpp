@@ -168,13 +168,6 @@ TEST_CASE("Evbuffer::assign deals with owned pointer") {
     REQUIRE(was_called2 == true);
 }
 
-static unsigned char *fail(evbuffer *, ssize_t) { return nullptr; }
-
-TEST_CASE("Evbuffer::pullup deals with evbuffer_pullup failure") {
-    Var<Evbuffer> evb = Evbuffer::create();
-    REQUIRE_THROWS_AS(evb->pullup<fail>(-1), EvbufferPullupError);
-}
-
 static int fail(evbuffer *, size_t) { return -1; }
 
 TEST_CASE("Evbuffer::drain deals with evbuffer_drain failure") {

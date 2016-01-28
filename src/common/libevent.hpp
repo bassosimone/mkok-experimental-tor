@@ -175,15 +175,6 @@ class Evbuffer : public NonCopyable, public NonMovable {
 
     size_t get_length() { return ::evbuffer_get_length(evbuf); }
 
-    template <unsigned char *(*func)(evbuffer *, ssize_t) = ::evbuffer_pullup>
-    std::string pullup(ssize_t n) {
-        unsigned char *s = func(evbuf, n);
-        if (s == nullptr) {
-            MK_THROW(EvbufferPullupError);
-        }
-        return std::string((char *)s, get_length());
-    }
-
     template <int (*func)(evbuffer *, size_t) = ::evbuffer_drain>
     void drain(size_t n) {
         if (func(evbuf, n) != 0) {

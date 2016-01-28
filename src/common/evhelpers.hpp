@@ -122,7 +122,7 @@ void sendrecv(Var<Bufferevent> bev, std::string request,
             Var<Evbuffer> evbuf = Evbuffer::create();
             bev->read_buffer(evbuf);
             if (output) {
-                *output += evbuf->pullup(-1);
+                *output += evbuf->remove(evbuf->get_length());
             } else if (must_echo) {
                 bev->write_buffer(evbuf);
             }
@@ -134,8 +134,7 @@ void sendrecv(Var<Bufferevent> bev, std::string request,
             Var<Evbuffer> input = bev->get_input();
             if (input->get_length() > 0) {
                 // We still have some more buffered data to add to output
-                *output += input->pullup(-1);
-                input->drain(input->get_length());
+                *output += input->remove(input->get_length());
             }
 
             Var<Evbuffer> output = bev->get_output();
