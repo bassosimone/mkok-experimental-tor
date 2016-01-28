@@ -206,7 +206,9 @@ class Evbuffer : public NonCopyable, public NonMovable {
         }
         if (required == 0) {
             n_extents = (unsigned)required;
-            return nullptr; // Caller required to check return value
+            // Caller required to check return value otherwise an exception
+            // is thrown if the Var<> wraps a nullptr.
+            return nullptr;
         }
         Var<evbuffer_iovec> retval(new evbuffer_iovec[required],
                                    [](evbuffer_iovec *p) { delete[] p; });
