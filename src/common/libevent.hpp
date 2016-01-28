@@ -35,10 +35,10 @@ extern "C" {
 // Using C linkage for C callbacks is recommended by C++ FAQ
 //  see <https://isocpp.org/wiki/faq/pointers-to-members#memfnptr-vs-fnptr>
 
-void mk_libevent_bev_read(bufferevent *, void *ptr);
-void mk_libevent_bev_write(bufferevent *, void *ptr);
-void mk_libevent_bev_event(bufferevent *, short what, void *ptr);
-void mk_libevent_event_cb(evutil_socket_t, short w, void *p);
+void mk_libevent_bev_read(bufferevent *, void *);
+void mk_libevent_bev_write(bufferevent *, void *);
+void mk_libevent_bev_event(bufferevent *, short, void *);
+void mk_libevent_event_cb(evutil_socket_t, short, void *);
 
 } // extern "C"
 
