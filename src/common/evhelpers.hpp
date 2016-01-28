@@ -125,7 +125,7 @@ void sendrecv(Var<Bufferevent> bev, std::string request,
             Var<Evbuffer> evbuf = Evbuffer::create();
             Bufferevent::read_buffer(bev, evbuf);
             if (output) {
-                *output += Evbuffer::pullup(evbuf, -1);
+                *output += evbuf->pullup(-1);
             } else if (must_echo) {
                 Bufferevent::write_buffer(bev, evbuf);
             }
@@ -135,21 +135,21 @@ void sendrecv(Var<Bufferevent> bev, std::string request,
             possibly_print_error(what, bev);
 
             Var<Evbuffer> input = Bufferevent::get_input(bev);
-            if (Evbuffer::get_length(input) > 0) {
+            if (input->get_length() > 0) {
                 // We still have some more buffered data to add to output
-                *output += Evbuffer::pullup(input, -1);
-                Evbuffer::drain(input, Evbuffer::get_length(input));
+                *output += input->pullup(-1);
+                input->drain(input->get_length());
             }
 
             Var<Evbuffer> output = Bufferevent::get_output(bev);
-            if (Evbuffer::get_length(output) > 0) {
+            if (output->get_length() > 0) {
                 // If we still have data to write, we must wait for the output
                 // buffer to empty before we can close the connection
                 Bufferevent::setcb(
                     bev, nullptr,
                     [bev, cb]() {
                         Var<Evbuffer> output = Bufferevent::get_output(bev);
-                        if (Evbuffer::get_length(output) > 0) {
+                        if (output->get_length() > 0) {
                             return; // I think this should not happen
                         }
                         // Clear self reference

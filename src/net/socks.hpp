@@ -68,19 +68,6 @@ class SocksMock {
         XX(parse_sockaddr_port, void(std::string, sockaddr *, int *));
     } evutil;
 #undef XX
-
-#define XX(name, signature) std::function<signature> name = Evbuffer::name
-    class {
-      public:
-        XX(add_uint8, void(Var<Evbuffer>, uint8_t));
-        XX(get_length, size_t(Var<Evbuffer>));
-        XX(remove, std::string(Var<Evbuffer>, size_t));
-        XX(add, void(Var<Evbuffer>, const void *, size_t));
-        XX(add_uint16, void(Var <Evbuffer>, uint16_t));
-        XX(copyout, std::string(Var<Evbuffer>, size_t));
-        XX(drain, void(Var<Evbuffer>, size_t));
-    } evbuffer;
-#undef XX
 };
 
 #define MockPtrArg SocksMock *mockp,
@@ -89,7 +76,6 @@ class SocksMock {
 
 #define Bufferevent(func, ...) mockp->bufferevent.func(__VA_ARGS__)
 #define Evutil(func, ...) mockp->evutil.func(__VA_ARGS__)
-#define Evbuffer(func, ...) mockp->evbuffer.func(__VA_ARGS__)
 
 #else
 
@@ -99,7 +85,6 @@ class SocksMock {
 
 #define Bufferevent(func, ...) Bufferevent::func(__VA_ARGS__)
 #define Evutil(func, ...) evutil::func(__VA_ARGS__)
-#define Evbuffer(func, ...) Evbuffer::func(__VA_ARGS__)
 
 #endif
 
@@ -200,18 +185,18 @@ class Socks {
 
                 Var<Evbuffer> out = Bufferevent(get_output, bev);
 
-                Evbuffer(add_uint8, out, 5); // Version
-                Evbuffer(add_uint8, out, 1); // Number of methods
-                Evbuffer(add_uint8, out, 0); // "NO_AUTH" meth.
+                out->add_uint8(5); // Version
+                out->add_uint8(1); // Number of methods
+                out->add_uint8(0); // "NO_AUTH" meth.
 
                 // Step #2: receive the allowed authentication methods
 
                 Bufferevent(setcb, bev, [ MockPtrName bev, cb, host, port ]() {
                     Var<Evbuffer> in = Bufferevent(get_input, bev);
-                    if (Evbuffer(get_length, in) < 2) {
+                    if (in->get_length() < 2) {
                         return; // Try again after next recv()
                     }
-                    std::string s = Evbuffer(remove, in, 2);
+                    std::string s = in->remove(2);
                     if (s[0] != 5) {
                         // Remove self reference
                         Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
@@ -229,10 +214,10 @@ class Socks {
 
                     Var<Evbuffer> out = Bufferevent(get_output, bev);
 
-                    Evbuffer(add_uint8, out, 5); // Version
-                    Evbuffer(add_uint8, out, 1); // CMD_CONNECT
-                    Evbuffer(add_uint8, out, 0); // Reserved
-                    Evbuffer(add_uint8, out, 3); // ATYPE_DOMAINNAME
+                    out->add_uint8(5); // Version
+                    out->add_uint8(1); // CMD_CONNECT
+                    out->add_uint8(0); // Reserved
+                    out->add_uint8(3); // ATYPE_DOMAINNAME
 
                     if (host.length() > 255) {
                         // Remove self reference
@@ -242,20 +227,20 @@ class Socks {
                     }
 
                     // Length and host name
-                    Evbuffer(add_uint8, out, host.length());
-                    Evbuffer(add, out, host.c_str(), host.length());
+                    out->add_uint8(host.length());
+                    out->add(host.c_str(), host.length());
 
                     // Port
-                    Evbuffer(add_uint16, out, port);
+                    out->add_uint16(port);
 
                     // Step #4: receive Tor's response
 
                     Bufferevent(setcb, bev, [ MockPtrName bev, cb ]() {
                         Var<Evbuffer> in = Bufferevent(get_input, bev);
-                        if (Evbuffer(get_length, in) < 5) {
+                        if (in->get_length() < 5) {
                             return; // Try again after next recv()
                         }
-                        std::string s = Evbuffer(copyout, in, 5);
+                        std::string s = in->copyout(5);
 
                         // Version | Reply | Reserved
                         if (s[0] != 5 || s[1] != 0 || s[2] != 0) {
@@ -285,12 +270,12 @@ class Socks {
                             return;
                         }
                         total += 2; // Port size
-                        if (Evbuffer(get_length, in) < total) {
+                        if (in->get_length() < total) {
                             return; // Try again after next recv()
                         }
 
                         // Remove socks data and clear callbacks
-                        Evbuffer(drain, in, total);
+                        in->drain(total);
                         Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
 
                         // Step #5: success! callback!
@@ -322,7 +307,6 @@ class Socks {
 #undef MockPtrName
 #undef Bufferevent
 #undef Evutil
-#undef Evbuffer
 
 /// \}
 

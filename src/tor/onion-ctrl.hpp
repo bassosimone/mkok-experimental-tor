@@ -83,13 +83,6 @@ class OnionCtrlMock {
 
     class {
       public:
-#define XX(name, signature) std::function<signature> name = Evbuffer::name
-        XX(readln, std::string(Var<Evbuffer>, enum evbuffer_eol_style));
-#undef XX
-    } evbuffer_impl;
-
-    class {
-      public:
         std::function<Error(std::string, sockaddr *, int *)>
             parse_sockaddr_port = [](std::string s, sockaddr *p, int *n) {
                 return evutil::parse_sockaddr_port(s, p, n);
@@ -100,7 +93,6 @@ class OnionCtrlMock {
 #define MockPtrArg OnionCtrlMock *mockp,
 #define MockPtrName mockp,
 #define Bufferevent(x) mockp->bufferevent_impl.x
-#define Evbuffer(x) mockp->evbuffer_impl.x
 #define Evutil(x) mockp->evutil_impl.x
 
 #else
@@ -108,7 +100,6 @@ class OnionCtrlMock {
 #define MockPtrArg
 #define MockPtrName
 #define Bufferevent(x) Bufferevent::x
-#define Evbuffer(x) Evbuffer::x
 #define Evutil(x) evutil::x
 
 #endif
@@ -663,7 +654,7 @@ class OnionCtrl {
         Bufferevent(setcb)(ctrl->bev, [ MockPtrName ctrl, cb ]() {
             for (;;) {
                 Var<Evbuffer> input = Bufferevent(get_input)(ctrl->bev);
-                std::string line = Evbuffer(readln)(input, EVBUFFER_EOL_CRLF);
+                std::string line = input->readln(EVBUFFER_EOL_CRLF);
                 if (line == "") {
                     // "There are explicitly no limits on line length"
                     return;
@@ -716,7 +707,6 @@ class OnionCtrl {
 #undef MockPtrArg
 #undef MockPtrName
 #undef Bufferevent
-#undef Evbuffer
 #undef Evutil
 
 } // namespace
