@@ -11,7 +11,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 #include "src/tor/onion-ctrl.hpp"
 
 #define USAGE "usage: %s [-A addr] [-f auth_cookie] [-p port] [-t timeout]\n"

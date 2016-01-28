@@ -16,9 +16,7 @@
 #include <stdlib.h>
 #include <string>
 #include <utility>
-#include "src/common/libevent-core.hpp"
-#include "src/common/libevent-evbuffer.hpp"
-#include "src/common/libevent-evutil.hpp"
+#include "src/common/libevent.hpp"
 
 namespace mk {
 

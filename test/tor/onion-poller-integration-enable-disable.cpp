@@ -5,7 +5,7 @@
 #define CATCH_CONFIG_MAIN
 
 #include <functional>
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 #include "src/tor/onion-poller.hpp"
 #include "catch.hpp"
 

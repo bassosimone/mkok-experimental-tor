@@ -19,8 +19,7 @@
 #include <sys/socket.h>
 #include <type_traits>
 #include <vector>
-#include "src/common/libevent-core.hpp"
-#include "src/common/libevent-evutil.hpp"
+#include "src/common/libevent.hpp"
 
 // Forward declarations
 struct timeval;

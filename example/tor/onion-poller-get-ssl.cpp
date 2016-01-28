@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include <sys/time.h>
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 #include "src/common/evhelpers.hpp"
 #include "src/net/socks.hpp"
 #include "src/tor/onion-poller.hpp"

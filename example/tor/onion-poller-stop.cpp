@@ -3,7 +3,7 @@
 // information on the copying conditions.
 
 #include <functional>
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 #include "src/tor/onion-poller.hpp"
 
 using namespace mk;

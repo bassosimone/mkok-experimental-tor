@@ -1,8 +1,6 @@
 
-libevent-core-integration
-libevent-core-unit
-libevent-evbuffer
-libevent-evutil
+libevent-integration
+libevent-unit
 http-parser-integration
 http-parser-unit
 socks-integration

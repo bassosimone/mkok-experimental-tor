@@ -2,7 +2,7 @@
 // Measurement-kit is free software. See AUTHORS and LICENSE for more
 // information on the copying conditions.
 
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 
 extern "C" {
 

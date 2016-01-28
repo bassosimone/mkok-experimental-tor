@@ -4,7 +4,7 @@
 
 #include <functional>
 #include <iostream>
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 #include "src/tor/onion-poller.hpp"
 
 using namespace mk;

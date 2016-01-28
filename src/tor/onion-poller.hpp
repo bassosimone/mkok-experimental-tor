@@ -13,7 +13,7 @@
 #include <measurement_kit/common/var.hpp>
 #include <string.h>
 #include <sys/time.h>
-#include "src/common/libevent-core.hpp"
+#include "src/common/libevent.hpp"
 #include "src/tor/onion-ctrl.hpp"
 
 extern "C" {

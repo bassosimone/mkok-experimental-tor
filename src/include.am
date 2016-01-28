@@ -10,5 +10,5 @@ httpincludedir = $(includedir)/measurement_kit/http
 httpinclude_HEADERS = # Empty
 httpinclude_HEADERS += include/measurement_kit/http/error.hpp
 libmeasurement_kit_la_SOURCES = # empty
-libmeasurement_kit_la_SOURCES += src/common/libevent-core.cpp
+libmeasurement_kit_la_SOURCES += src/common/libevent.cpp
 libmeasurement_kit_la_SOURCES += src/common/object.cpp

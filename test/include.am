@@ -1,27 +1,15 @@
 
-test_common_libevent_core_integration_SOURCES = test/common/libevent-core-integration.cpp
-test_common_libevent_core_integration_LDADD = libmeasurement_kit.la
+test_common_libevent_integration_SOURCES = test/common/libevent-integration.cpp
+test_common_libevent_integration_LDADD = libmeasurement_kit.la
 if BUILD_TESTS
-    check_PROGRAMS += test/common/libevent-core-integration
-    TESTS += test/common/libevent-core-integration
+    check_PROGRAMS += test/common/libevent-integration
+    TESTS += test/common/libevent-integration
 endif
-test_common_libevent_core_unit_SOURCES = test/common/libevent-core-unit.cpp
-test_common_libevent_core_unit_LDADD = libmeasurement_kit.la
+test_common_libevent_unit_SOURCES = test/common/libevent-unit.cpp
+test_common_libevent_unit_LDADD = libmeasurement_kit.la
 if BUILD_TESTS
-    check_PROGRAMS += test/common/libevent-core-unit
-    TESTS += test/common/libevent-core-unit
-endif
-test_common_libevent_evbuffer_SOURCES = test/common/libevent-evbuffer.cpp
-test_common_libevent_evbuffer_LDADD = libmeasurement_kit.la
-if BUILD_TESTS
-    check_PROGRAMS += test/common/libevent-evbuffer
-    TESTS += test/common/libevent-evbuffer
-endif
-test_common_libevent_evutil_SOURCES = test/common/libevent-evutil.cpp
-test_common_libevent_evutil_LDADD = libmeasurement_kit.la
-if BUILD_TESTS
-    check_PROGRAMS += test/common/libevent-evutil
-    TESTS += test/common/libevent-evutil
+    check_PROGRAMS += test/common/libevent-unit
+    TESTS += test/common/libevent-unit
 endif
 test_http_http_parser_integration_SOURCES = test/http/http-parser-integration.cpp
 test_http_http_parser_integration_LDADD = libmeasurement_kit.la

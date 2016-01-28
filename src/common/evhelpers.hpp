@@ -23,9 +23,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include "src/common/libevent-core.hpp"
-#include "src/common/libevent-evbuffer.hpp"
-#include "src/common/libevent-evutil.hpp"
+#include "src/common/libevent.hpp"
 
 namespace mk {
 namespace evhelpers {
