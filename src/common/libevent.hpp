@@ -5,24 +5,22 @@
 #ifndef SRC_COMMON_LIBEVENT_HPP
 #define SRC_COMMON_LIBEVENT_HPP
 
-#include <arpa/inet.h>
 #include <cstddef>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/bufferevent_ssl.h>
 #include <event2/event.h>
 #include <event2/util.h>
-#include <exception>
 #include <functional>
-#include <memory>
 #include <measurement_kit/common/constraints.hpp>
 #include <measurement_kit/common/error.hpp>
 #include <measurement_kit/common/func.hpp>
 #include <measurement_kit/common/var.hpp>
+#include <netinet/in.h>
+#include <stdint.h>
 #include <string>
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <utility>
 
 // Forward declarations
 struct bufferevent;

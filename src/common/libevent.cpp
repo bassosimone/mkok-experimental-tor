@@ -2,6 +2,9 @@
 // Measurement-kit is free software. See AUTHORS and LICENSE for more
 // information on the copying conditions.
 
+#include <measurement_kit/common/func.hpp>
+#include <measurement_kit/common/var.hpp>
+#include <sys/time.h>
 #include "src/common/libevent.hpp"
 
 extern "C" {
