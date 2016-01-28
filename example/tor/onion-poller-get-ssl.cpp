@@ -37,14 +37,14 @@ int main() {
                     std::cout << "ssl...\n";
                     SSL *secure = SSL_new(evhelpers::SslContext::get());
                     if (secure == nullptr) {
-                        Bufferevent::setcb(bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         throw std::exception();
                     }
                     auto ssl_bev = Bufferevent::openssl_filter_new(
                         poller->evbase, bev, secure, BUFFEREVENT_SSL_CONNECTING,
                         BEV_OPT_CLOSE_ON_FREE);
-                    Bufferevent::setcb(
-                        ssl_bev, nullptr, nullptr,
+                    ssl_bev->setcb(
+                        nullptr, nullptr,
                         [outp, poller, ssl_bev](short what) {
                             // FIXME: do not assumre we're connected here
                             std::cout << "ssl... ok\n";

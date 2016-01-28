@@ -46,7 +46,7 @@ static void possibly_print_error(short what, Var<Bufferevent> bev) {
     unsigned long error;
     char buffer[1024];
     for (;;) {
-        if ((error = Bufferevent::get_openssl_error(bev)) == 0) break;
+        if ((error = bev->get_openssl_error()) == 0) break;
         ERR_error_string_n(error, buffer, sizeof(buffer));
         if (VERBOSE) {
             std::clog << "ssl: " << buffer << "\n";
@@ -88,16 +88,16 @@ void connect(Var<EventBase> evbase, const char *endpoint,
         break_soon(evbase);
         return;
     }
-    Bufferevent::socket_connect(bev, sa, len);
+    bev->socket_connect(sa, len);
     timeval timeo;
     timeo.tv_usec = timeo.tv_sec = 3;
-    Bufferevent::set_timeouts(bev, &timeo, &timeo);
-    Bufferevent::setcb(bev, nullptr, nullptr,
+    bev->set_timeouts(&timeo, &timeo);
+    bev->setcb(nullptr, nullptr,
                        [bev, callback, evbase, isconnected](short what) {
                            if (what != BEV_EVENT_CONNECTED) {
                                possibly_print_error(what, bev);
                                // Clear self reference
-                               Bufferevent::setcb(bev, nullptr, nullptr,
+                               bev->setcb(nullptr, nullptr,
                                                   nullptr);
                                break_soon(evbase);
                                return;
@@ -115,45 +115,44 @@ void sendrecv(Var<Bufferevent> bev, std::string request,
               std::function<void()> cb, std::string *output,
               const timeval *timeout, bool must_echo) {
     if (request != "") {
-        Bufferevent::write(bev, request.data(), request.size());
+        bev->write(request.data(), request.size());
     }
-    if (timeout) Bufferevent::set_timeouts(bev, timeout, timeout);
-    Bufferevent::enable(bev, EV_READ);
-    Bufferevent::setcb(
-        bev,
+    if (timeout) bev->set_timeouts(timeout, timeout);
+    bev->enable(EV_READ);
+    bev->setcb(
         [bev, must_echo, output]() {
             Var<Evbuffer> evbuf = Evbuffer::create();
-            Bufferevent::read_buffer(bev, evbuf);
+            bev->read_buffer(evbuf);
             if (output) {
                 *output += evbuf->pullup(-1);
             } else if (must_echo) {
-                Bufferevent::write_buffer(bev, evbuf);
+                bev->write_buffer(evbuf);
             }
         },
         []() { /* Note to self: this is here to increase coverage */ },
         [bev, cb, output](short what) {
             possibly_print_error(what, bev);
 
-            Var<Evbuffer> input = Bufferevent::get_input(bev);
+            Var<Evbuffer> input = bev->get_input();
             if (input->get_length() > 0) {
                 // We still have some more buffered data to add to output
                 *output += input->pullup(-1);
                 input->drain(input->get_length());
             }
 
-            Var<Evbuffer> output = Bufferevent::get_output(bev);
+            Var<Evbuffer> output = bev->get_output();
             if (output->get_length() > 0) {
                 // If we still have data to write, we must wait for the output
                 // buffer to empty before we can close the connection
-                Bufferevent::setcb(
-                    bev, nullptr,
+                bev->setcb(
+                    nullptr,
                     [bev, cb]() {
-                        Var<Evbuffer> output = Bufferevent::get_output(bev);
+                        Var<Evbuffer> output = bev->get_output();
                         if (output->get_length() > 0) {
                             return; // I think this should not happen
                         }
                         // Clear self reference
-                        Bufferevent::setcb(bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         cb();
                     },
                     [bev, cb](short what) {
@@ -162,14 +161,14 @@ void sendrecv(Var<Bufferevent> bev, std::string request,
                         // probably the best thing is to close
                         possibly_print_error(what, bev);
                         // Clear self reference
-                        Bufferevent::setcb(bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         cb();
                     });
                 return;
             }
 
             // Clear self reference
-            Bufferevent::setcb(bev, nullptr, nullptr, nullptr);
+            bev->setcb(nullptr, nullptr, nullptr);
             cb();
             return;
         });
@@ -190,14 +189,13 @@ void ssl_connect(Var<EventBase> evbase, const char *endpoint, SSL_CTX *context,
                 }
                 auto ssl_bev = Bufferevent::openssl_filter_new(
                     evbase, bev, secure, BUFFEREVENT_SSL_CONNECTING, FLAGS);
-                Bufferevent::setcb(
-                    ssl_bev, nullptr, nullptr,
+                ssl_bev->setcb(
+                    nullptr, nullptr,
                     [callback, evbase, ssl_bev, ssl_isconnected](short what) {
                         if (what != BEV_EVENT_CONNECTED) {
                             possibly_print_error(what, ssl_bev);
                             // Clear self reference
-                            Bufferevent::setcb(ssl_bev, nullptr, nullptr,
-                                               nullptr);
+                            ssl_bev->setcb(nullptr, nullptr, nullptr);
                             break_soon(evbase);
                             return;
                         }

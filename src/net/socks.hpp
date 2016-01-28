@@ -47,21 +47,6 @@ enum class SocksStatus {
 
 class SocksMock {
   public:
-#define XX(name, signature) std::function<signature> name = Bufferevent::name
-    class {
-      public:
-        XX(socket_new, Var<Bufferevent>(Var<EventBase>, evutil_socket_t, int));
-        XX(setcb, void(Var<Bufferevent>, std::function<void()>,
-                       std::function<void()>, std::function<void(short)>));
-        XX(get_output, Var<Evbuffer>(Var<Bufferevent>));
-        XX(get_input, Var<Evbuffer>(Var<Bufferevent>));
-        XX(set_timeouts,
-           void(Var<Bufferevent>, const timeval *, const timeval *));
-        XX(socket_connect, void(Var<Bufferevent>, sockaddr *, int));
-        XX(enable, void(Var<Bufferevent>, int));
-    } bufferevent;
-#undef XX
-
 #define XX(name, signature) std::function<signature> name = Evutil::name
     class {
       public:
@@ -74,7 +59,6 @@ class SocksMock {
 #define MockPtrArg0 SocksMock *mockp
 #define MockPtrName mockp,
 
-#define Bufferevent(func, ...) mockp->bufferevent.func(__VA_ARGS__)
 #define Evutil(func, ...) mockp->evutil.func(__VA_ARGS__)
 
 #else
@@ -83,7 +67,6 @@ class SocksMock {
 #define MockPtrArg0
 #define MockPtrName
 
-#define Bufferevent(func, ...) Bufferevent::func(__VA_ARGS__)
 #define Evutil(func, ...) evutil::func(__VA_ARGS__)
 
 #endif
@@ -169,21 +152,21 @@ class Socks {
                         uint16_t port, sockaddr *proxy_sa, int proxy_salen,
                         SocksConnectCb cb, const timeval *timeout = nullptr) {
         static const int flags = BEV_OPT_CLOSE_ON_FREE;
-        Var<Bufferevent> bev = Bufferevent(socket_new, evbase, -1, flags);
-        Bufferevent(
-            setcb, bev, nullptr, nullptr,
+        Var<Bufferevent> bev = Bufferevent::socket_new(evbase, -1, flags);
+        bev->setcb(
+            nullptr, nullptr,
             [ MockPtrName bev, cb, host, port ](short what) {
                 if (what != BEV_EVENT_CONNECTED) {
                     // Remove self reference
-                    Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                    bev->setcb(nullptr, nullptr, nullptr);
                     cb(SocksStatus::CONNECT_FAILED, nullptr);
                     return;
                 }
-                Bufferevent(enable, bev, EV_READ);
+                bev->enable(EV_READ);
 
                 // Step #1: send out preferred authentication methods
 
-                Var<Evbuffer> out = Bufferevent(get_output, bev);
+                Var<Evbuffer> out = bev->get_output();
 
                 out->add_uint8(5); // Version
                 out->add_uint8(1); // Number of methods
@@ -191,28 +174,28 @@ class Socks {
 
                 // Step #2: receive the allowed authentication methods
 
-                Bufferevent(setcb, bev, [ MockPtrName bev, cb, host, port ]() {
-                    Var<Evbuffer> in = Bufferevent(get_input, bev);
+                bev->setcb([ MockPtrName bev, cb, host, port ]() {
+                    Var<Evbuffer> in = bev->get_input();
                     if (in->get_length() < 2) {
                         return; // Try again after next recv()
                     }
                     std::string s = in->remove(2);
                     if (s[0] != 5) {
                         // Remove self reference
-                        Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         cb(SocksStatus::UNEXPECTED_VERSION, nullptr);
                         return;
                     }
                     if (s[1] != 0) {
                         // Remove self reference
-                        Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         cb(SocksStatus::PROTO_ERROR, nullptr);
                         return;
                     }
 
                     // Step #3: ask Tor to connect to remote host
 
-                    Var<Evbuffer> out = Bufferevent(get_output, bev);
+                    Var<Evbuffer> out = bev->get_output();
 
                     out->add_uint8(5); // Version
                     out->add_uint8(1); // CMD_CONNECT
@@ -221,7 +204,7 @@ class Socks {
 
                     if (host.length() > 255) {
                         // Remove self reference
-                        Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         cb(SocksStatus::ADDRESS_TOO_LONG, nullptr);
                         return;
                     }
@@ -235,8 +218,8 @@ class Socks {
 
                     // Step #4: receive Tor's response
 
-                    Bufferevent(setcb, bev, [ MockPtrName bev, cb ]() {
-                        Var<Evbuffer> in = Bufferevent(get_input, bev);
+                    bev->setcb([ MockPtrName bev, cb ]() {
+                        Var<Evbuffer> in = bev->get_input();
                         if (in->get_length() < 5) {
                             return; // Try again after next recv()
                         }
@@ -245,7 +228,7 @@ class Socks {
                         // Version | Reply | Reserved
                         if (s[0] != 5 || s[1] != 0 || s[2] != 0) {
                             // Remove self reference
-                            Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                            bev->setcb(nullptr, nullptr, nullptr);
                             // TODO: Here we should process s[1] more
                             // carefully to map to the error that
                             // occurred and report it to the caller
@@ -265,7 +248,7 @@ class Socks {
                             total += 16; // IPv6 addr size
                         } else {
                             // Remove self reference
-                            Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                            bev->setcb(nullptr, nullptr, nullptr);
                             cb(SocksStatus::INVALID_ATYPE, nullptr);
                             return;
                         }
@@ -276,7 +259,7 @@ class Socks {
 
                         // Remove socks data and clear callbacks
                         in->drain(total);
-                        Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
 
                         // Step #5: success! callback!
 
@@ -284,20 +267,20 @@ class Socks {
                     },
                     nullptr, [MockPtrName bev, cb](short) {
                         // Remove self reference
-                        Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                        bev->setcb(nullptr, nullptr, nullptr);
                         cb(SocksStatus::IO_ERROR_STEP_4, nullptr);
                     });
 
                 },
                 nullptr, [MockPtrName bev, cb](short) {
                     // Remove self reference
-                    Bufferevent(setcb, bev, nullptr, nullptr, nullptr);
+                    bev->setcb(nullptr, nullptr, nullptr);
                     cb(SocksStatus::IO_ERROR_STEP_2, nullptr);
                 });
             });
 
-        Bufferevent(set_timeouts, bev, timeout, timeout);
-        Bufferevent(socket_connect, bev, proxy_sa, proxy_salen);
+        bev->set_timeouts(timeout, timeout);
+        bev->socket_connect(proxy_sa, proxy_salen);
     }
 };
 

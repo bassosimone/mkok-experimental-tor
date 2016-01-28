@@ -68,21 +68,6 @@ class OnionCtrlMock {
   public:
     class {
       public:
-#define XX(name, signature) std::function<signature> name = Bufferevent::name
-        XX(enable, void(Var<Bufferevent>, short));
-        XX(get_input, Var<Evbuffer>(Var<Bufferevent>));
-        XX(set_timeouts,
-           void(Var<Bufferevent>, const timeval *, const timeval *));
-        XX(setcb, void(Var<Bufferevent>, std::function<void()>,
-                       std::function<void()>, std::function<void(short)>));
-        XX(socket_connect, void(Var<Bufferevent>, sockaddr *, int));
-        XX(socket_new, Var<Bufferevent>(Var<EventBase>, evutil_socket_t, int));
-        XX(write, void(Var<Bufferevent>, const void *, size_t));
-#undef XX
-    } bufferevent_impl;
-
-    class {
-      public:
         std::function<Error(std::string, sockaddr *, int *)>
             parse_sockaddr_port = [](std::string s, sockaddr *p, int *n) {
                 return evutil::parse_sockaddr_port(s, p, n);
@@ -92,14 +77,12 @@ class OnionCtrlMock {
 
 #define MockPtrArg OnionCtrlMock *mockp,
 #define MockPtrName mockp,
-#define Bufferevent(x) mockp->bufferevent_impl.x
 #define Evutil(x) mockp->evutil_impl.x
 
 #else
 
 #define MockPtrArg
 #define MockPtrName
-#define Bufferevent(x) Bufferevent::x
 #define Evutil(x) evutil::x
 
 #endif
@@ -175,7 +158,7 @@ class OnionCtrl {
     /// \param ctrl Control connection.
     static void close(MockPtrArg Var<OnionCtrl> ctrl) {
         // Remove self reference
-        Bufferevent(setcb)(ctrl->bev, nullptr, nullptr, nullptr);
+        ctrl->bev->setcb(nullptr, nullptr, nullptr);
     }
 
     /// Connect to control port and authenticate.
@@ -265,19 +248,19 @@ class OnionCtrl {
             cb(OnionStatus::ALREADY_CONNECTED);
             return;
         }
-        ctrl->bev = Bufferevent(socket_new)(ctrl->evbase, -1, flags);
-        Bufferevent(setcb)(
-            ctrl->bev, nullptr, nullptr, [ MockPtrName ctrl, cb ](short what) {
+        ctrl->bev = Bufferevent::socket_new(ctrl->evbase, -1, flags);
+        ctrl->bev->setcb(
+            nullptr, nullptr, [ MockPtrName ctrl, cb ](short what) {
                 if (what != BEV_EVENT_CONNECTED) {
                     // Remove self reference
-                    Bufferevent(setcb)(ctrl->bev, nullptr, nullptr, nullptr);
+                    ctrl->bev->setcb(nullptr, nullptr, nullptr);
                     cb(OnionStatus::CONNECT_FAILED);
                     return;
                 }
                 cb(OnionStatus::NO_ERROR);
             });
-        Bufferevent(set_timeouts)(ctrl->bev, timeout, timeout);
-        Bufferevent(socket_connect)(ctrl->bev, sa, len);
+        ctrl->bev->set_timeouts(timeout, timeout);
+        ctrl->bev->socket_connect(sa, len);
     }
 
     /// Generate AUTHENTICATE command.
@@ -640,8 +623,8 @@ class OnionCtrl {
     /// \param cb Callback called when data was sent.
     static void send(MockPtrArg Var<OnionCtrl> ctrl, std::string command,
                      OnionSentCb cb) {
-        Bufferevent(write)(ctrl->bev, command.data(), command.size());
-        Bufferevent(setcb)(ctrl->bev, nullptr,
+        ctrl->bev->write(command.data(), command.size());
+        ctrl->bev->setcb(nullptr,
                            [cb]() { cb(OnionStatus::NO_ERROR); },
                            [cb](short w) { cb(event_mask_to_status(w)); });
     }
@@ -650,10 +633,10 @@ class OnionCtrl {
     /// \param ctrl Control connection.
     /// \param cb Callback that receives lines.
     static void recv(MockPtrArg Var<OnionCtrl> ctrl, OnionReplyLineCb cb) {
-        Bufferevent(enable)(ctrl->bev, EV_READ); // Just in case, enable read
-        Bufferevent(setcb)(ctrl->bev, [ MockPtrName ctrl, cb ]() {
+        ctrl->bev->enable(EV_READ); // Just in case, enable read
+        ctrl->bev->setcb([ MockPtrName ctrl, cb ]() {
             for (;;) {
-                Var<Evbuffer> input = Bufferevent(get_input)(ctrl->bev);
+                Var<Evbuffer> input = ctrl->bev->get_input();
                 std::string line = input->readln(EVBUFFER_EOL_CRLF);
                 if (line == "") {
                     // "There are explicitly no limits on line length"
@@ -706,7 +689,6 @@ class OnionCtrl {
 
 #undef MockPtrArg
 #undef MockPtrName
-#undef Bufferevent
 #undef Evutil
 
 } // namespace

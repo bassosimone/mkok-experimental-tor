@@ -34,53 +34,14 @@ extern "C" {
 // Using C linkage for C callbacks is recommended by C++ FAQ
 //  see <https://isocpp.org/wiki/faq/pointers-to-members#memfnptr-vs-fnptr>
 
-static void mk_libevent_bev_read(bufferevent *, void *ptr);
-static void mk_libevent_bev_write(bufferevent *, void *ptr);
-static void mk_libevent_bev_event(bufferevent *, short what, void *ptr);
-static void mk_libevent_event_cb(evutil_socket_t, short w, void *p);
+void mk_libevent_bev_read(bufferevent *, void *ptr);
+void mk_libevent_bev_write(bufferevent *, void *ptr);
+void mk_libevent_bev_event(bufferevent *, short what, void *ptr);
+void mk_libevent_event_cb(evutil_socket_t, short w, void *p);
 
 } // extern "C"
 
 namespace mk {
-
-#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-
-class LibeventMock {
-  public:
-#define XX(name, signature) std::function<signature> name = ::name
-    XX(bufferevent_disable, int(bufferevent *, int));
-    XX(bufferevent_enable, int(bufferevent *, int));
-    XX(bufferevent_free, void(bufferevent *));
-    XX(bufferevent_openssl_filter_new,
-       bufferevent *(event_base *, bufferevent *, ssl_st *,
-                     bufferevent_ssl_state, int));
-    XX(bufferevent_read_buffer, int(bufferevent *, evbuffer *));
-    XX(bufferevent_setcb,
-       void(bufferevent *, bufferevent_data_cb, bufferevent_data_cb,
-            bufferevent_event_cb, void *));
-    XX(bufferevent_set_timeouts,
-       int(bufferevent *, const timeval *, const timeval *));
-    XX(bufferevent_socket_connect, int(bufferevent *, sockaddr *, int));
-    XX(bufferevent_socket_new,
-       bufferevent *(event_base *, evutil_socket_t, int));
-    XX(bufferevent_write, int(bufferevent *, const void *, size_t));
-    XX(bufferevent_write_buffer, int(bufferevent *, evbuffer *));
-#undef XX
-};
-
-#define MockPtrArg LibeventMock *mockp,
-#define MockPtrArg0 LibeventMock *mockp
-#define MockPtrName mockp,
-#define call(func, ...) mockp->func(__VA_ARGS__)
-
-#else
-
-#define MockPtrArg
-#define MockPtrArg0
-#define MockPtrName
-#define call(func, ...) ::func(__VA_ARGS__)
-
-#endif
 
 class EventBase {
   public:
@@ -164,7 +125,6 @@ class Bufferevent {
     bufferevent *bevp = nullptr;
     Var<EventBase> evbase;
 #ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-    LibeventMock *mockp = nullptr;
     Var<Bufferevent> *the_opaque = nullptr; // To avoid leak in regress tests
 #endif
 
@@ -173,13 +133,7 @@ class Bufferevent {
     Bufferevent &operator=(Bufferevent &) = delete;
     Bufferevent(Bufferevent &&) = delete;
     Bufferevent &operator=(Bufferevent &&) = delete;
-
-    ~Bufferevent() {
-        if (bevp != nullptr) {
-            call(bufferevent_free, bevp);
-            bevp = nullptr;
-        }
-    }
+    ~Bufferevent() {}
 
     static std::string event_string(short what) {
         std::string descr = "";
@@ -192,199 +146,150 @@ class Bufferevent {
         return descr;
     }
 
-    static Var<Bufferevent> socket_new(MockPtrArg Var<EventBase> base,
-                                       evutil_socket_t fd, int flags) {
+    template <bufferevent *(*construct)(event_base *, evutil_socket_t,
+                                        int) = ::bufferevent_socket_new,
+              void (*destruct)(bufferevent *) = ::bufferevent_free>
+    static Var<Bufferevent> socket_new(Var<EventBase> base, evutil_socket_t fd,
+                                       int flags) {
         Bufferevent *ptr = new Bufferevent;
         ptr->evbase = base;
-#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-        ptr->mockp = mockp;
-#endif
-        ptr->bevp = call(bufferevent_socket_new, base->evbase, fd, flags);
+        ptr->bevp = construct(base->evbase, fd, flags);
         if (ptr->bevp == nullptr) {
             delete ptr;
             MK_THROW(BuffereventSocketNewError);
         }
-        Var<Bufferevent> *varp = new Var<Bufferevent>(ptr);
+        Var<Bufferevent> *varp = new Var<Bufferevent>(ptr, [](Bufferevent *p) {
+            if (p->bevp != nullptr) {
+                destruct(p->bevp);
+                p->bevp = nullptr;
+            }
+            delete p;
+        });
 #ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
         ptr->the_opaque = varp;
 #endif
         // We pass `varp` so C code keeps us alive
-        call(bufferevent_setcb, ptr->bevp, mk_libevent_bev_read,
-             mk_libevent_bev_write, mk_libevent_bev_event, varp);
+        bufferevent_setcb(ptr->bevp, mk_libevent_bev_read,
+                          mk_libevent_bev_write, mk_libevent_bev_event, varp);
         return *varp;
     }
 
-    static void socket_connect(MockPtrArg Var<Bufferevent> bev, sockaddr *sa,
-                               int len) {
-        if (call(bufferevent_socket_connect, bev->bevp, sa, len) != 0) {
+    template <int (*func)(bufferevent *, sockaddr *,
+                          int) = ::bufferevent_socket_connect>
+    void socket_connect(sockaddr *sa, int len) {
+        if (func(bevp, sa, len) != 0) {
             MK_THROW(BuffereventSocketConnectError);
         }
     }
 
-    static void setcb(Var<Bufferevent> bev, std::function<void()> readcb,
-                      std::function<void()> writecb,
-                      std::function<void(short)> eventcb) {
-        bev->event_cb = eventcb;
-        bev->read_cb = readcb;
-        bev->write_cb = writecb;
+    void setcb(std::function<void()> readcb, std::function<void()> writecb,
+               std::function<void(short)> eventcb) {
+        event_cb = eventcb;
+        read_cb = readcb;
+        write_cb = writecb;
     }
 
-    static void write(MockPtrArg Var<Bufferevent> bev, const void *base,
-                      size_t count) {
-        if (call(bufferevent_write, bev->bevp, base, count) != 0) {
+    template <int (*func)(bufferevent *, const void *,
+                          size_t) = ::bufferevent_write>
+    void write(const void *base, size_t count) {
+        if (func(bevp, base, count) != 0) {
             MK_THROW(BuffereventWriteError);
         }
     }
 
-    static void write_buffer(MockPtrArg Var<Bufferevent> bev, Var<Evbuffer> s) {
-        if (call(bufferevent_write_buffer, bev->bevp, s->evbuf) != 0) {
+    template <int (*func)(bufferevent *,
+                          evbuffer *) = ::bufferevent_write_buffer>
+    void write_buffer(Var<Evbuffer> s) {
+        if (func(bevp, s->evbuf) != 0) {
             MK_THROW(BuffereventWriteBufferError);
         }
     }
 
-    static size_t read(Var<Bufferevent> bev, void *base, size_t count) {
-        return ::bufferevent_read(bev->bevp, base, count);
+    size_t read(void *base, size_t count) {
+        return ::bufferevent_read(bevp, base, count);
     }
 
-    static void read_buffer(MockPtrArg Var<Bufferevent> bev, Var<Evbuffer> d) {
-        if (call(bufferevent_read_buffer, bev->bevp, d->evbuf) != 0) {
+    template <int (*func)(bufferevent *,
+                          evbuffer *) = ::bufferevent_read_buffer>
+    void read_buffer(Var<Evbuffer> d) {
+        if (func(bevp, d->evbuf) != 0) {
             MK_THROW(BuffereventReadBufferError);
         }
     }
 
-    static void enable(MockPtrArg Var<Bufferevent> bev, short what) {
-        if (call(bufferevent_enable, bev->bevp, what) != 0) {
+    template <int (*func)(bufferevent *, short) = ::bufferevent_enable>
+    void enable(short what) {
+        if (func(bevp, what) != 0) {
             MK_THROW(BuffereventEnableError);
         }
     }
 
-    static void disable(MockPtrArg Var<Bufferevent> bev, short what) {
-        if (call(bufferevent_disable, bev->bevp, what) != 0) {
+    template <int (*func)(bufferevent *, short) = ::bufferevent_disable>
+    void disable(short what) {
+        if (func(bevp, what) != 0) {
             MK_THROW(BuffereventDisableError);
         }
     }
 
-    static void set_timeouts(MockPtrArg Var<Bufferevent> bev,
-                             const timeval *rto, const timeval *wto) {
-        if (call(bufferevent_set_timeouts, bev->bevp, rto, wto) != 0) {
+    template <int (*func)(bufferevent *, const timeval *,
+                          const timeval *) = ::bufferevent_set_timeouts>
+    void set_timeouts(const timeval *rto, const timeval *wto) {
+        if (func(bevp, rto, wto) != 0) {
             MK_THROW(BuffereventSetTimeoutsError);
         }
     }
 
-    static Var<Bufferevent> openssl_filter_new(MockPtrArg Var<EventBase> base,
-                                               Var<Bufferevent> underlying,
-                                               ssl_st *ssl,
-                                               enum bufferevent_ssl_state state,
-                                               int options) {
+    template <bufferevent *(*construct)(event_base *, bufferevent *, ssl_st *,
+                                        bufferevent_ssl_state,
+                                        int) = ::bufferevent_openssl_filter_new,
+              void (*destruct)(bufferevent *) = ::bufferevent_free>
+    static Var<Bufferevent>
+    openssl_filter_new(Var<EventBase> base, Var<Bufferevent> underlying,
+                       ssl_st *ssl, enum bufferevent_ssl_state state,
+                       int options) {
         Bufferevent *ptr = new Bufferevent();
         ptr->evbase = base;
-#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-        ptr->mockp = mockp;
-#endif
-        ptr->bevp = call(bufferevent_openssl_filter_new, base->evbase,
-                         underlying->bevp, ssl, state, options);
+        ptr->bevp =
+            construct(base->evbase, underlying->bevp, ssl, state, options);
         if (ptr->bevp == nullptr) {
             delete ptr;
             MK_THROW(BuffereventOpensslFilterNewError);
         }
         underlying->bevp = nullptr; // Steal `bevp` from `underlying`
         // Clear eventual self-references that `underlying` could have...
-        setcb(underlying, nullptr, nullptr, nullptr);
+        underlying->setcb(nullptr, nullptr, nullptr);
         // TODO: investigate the issue of SSL clean shutdown
         //  see <http://www.wangafu.net/~nickm/libevent-book/>
         //   and especially R6a, 'avanced bufferevents'
-        Var<Bufferevent> *varp = new Var<Bufferevent>(ptr);
+        Var<Bufferevent> *varp = new Var<Bufferevent>(ptr, [](Bufferevent *p) {
+            if (p->bevp != nullptr) {
+                destruct(p->bevp);
+                p->bevp = nullptr;
+            }
+            delete p;
+        });
 #ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
         ptr->the_opaque = varp;
 #endif
         // We pass `varp` so C code keeps us alive
-        call(bufferevent_setcb, ptr->bevp, mk_libevent_bev_read,
+        ::bufferevent_setcb(ptr->bevp, mk_libevent_bev_read,
              mk_libevent_bev_write, mk_libevent_bev_event, varp);
         return *varp;
     }
 
-    static unsigned long get_openssl_error(Var<Bufferevent> bev) {
-        return ::bufferevent_get_openssl_error(bev->bevp);
+    unsigned long get_openssl_error() {
+        return ::bufferevent_get_openssl_error(bevp);
     }
 
-    static Var<Evbuffer> get_input(Var<Bufferevent> bev) {
-        return Evbuffer::assign(bufferevent_get_input(bev->bevp), false);
+    Var<Evbuffer> get_input() {
+        return Evbuffer::assign(::bufferevent_get_input(bevp), false);
     }
 
-    static Var<Evbuffer> get_output(Var<Bufferevent> bev) {
-        return Evbuffer::assign(bufferevent_get_output(bev->bevp), false);
+    Var<Evbuffer> get_output() {
+        return Evbuffer::assign(::bufferevent_get_output(bevp), false);
     }
 };
 
-// Undefine internal macros
-#undef MockPtrArg
-#undef MockPtrArg0
-
 } // namespace
-
-extern "C" {
-
-static void mk_libevent_event_cb(evutil_socket_t, short w, void *p) {
-    auto f = static_cast<std::function<void(short)> *>(p);
-    (*f)(w);
-    delete f;
-}
-
-#ifdef SRC_COMMON_LIBEVENT_CORE_ENABLE_MOCK
-#undef call
-#define call(func, ...) (*varp)->mockp->func(__VA_ARGS__)
-#undef MockPtrName
-#define MockPtrName (*varp)->mockp,
-#endif
-
-static void mk_libevent_bev_is_ignored_by_cxx(mk::Var<mk::Bufferevent> *varp);
-
-static void mk_libevent_bev_read(bufferevent *, void *ptr) {
-    mk::Var<mk::Bufferevent> *varp =
-        static_cast<mk::Var<mk::Bufferevent> *>(ptr);
-    if ((*varp)->read_cb) (*varp)->read_cb();
-    if (varp->unique()) mk_libevent_bev_is_ignored_by_cxx(varp);
-}
-
-static void mk_libevent_bev_write(bufferevent *, void *ptr) {
-    mk::Var<mk::Bufferevent> *varp =
-        static_cast<mk::Var<mk::Bufferevent> *>(ptr);
-    if ((*varp)->write_cb) (*varp)->write_cb();
-    if (varp->unique()) mk_libevent_bev_is_ignored_by_cxx(varp);
-}
-
-static void mk_libevent_bev_event(bufferevent *, short what, void *ptr) {
-    mk::Var<mk::Bufferevent> *varp =
-        static_cast<mk::Var<mk::Bufferevent> *>(ptr);
-    if ((*varp)->event_cb) (*varp)->event_cb(what);
-    if (varp->unique()) mk_libevent_bev_is_ignored_by_cxx(varp);
-}
-
-static void mk_libevent_bev_is_ignored_by_cxx(mk::Var<mk::Bufferevent> *varp) {
-    // If a smart pointer is ignored by C++ code, we can dispose of it.
-    // If `bevp` is not null, we put it into a state in which it cannot hurt,
-    // otherwise, if it's null, it was stolen by SSL code.
-    // We do not delete the pointer immediately because the underlying code
-    // that called us may not like it; instead postpone to next cycle.
-    // Calling delete is going to trigger bufferevent_free().
-    if ((*varp)->bevp != nullptr) {
-        call(bufferevent_setcb, (*varp)->bevp, nullptr, nullptr, nullptr,
-             nullptr);
-        if (call(bufferevent_disable, (*varp)->bevp, EV_READ | EV_WRITE) != 0) {
-            MK_THROW(mk::BuffereventDisableError);
-        }
-    }
-    timeval timeo;
-    timeo.tv_sec = timeo.tv_usec = 0;
-    (*varp)->evbase->once(-1, EV_TIMEOUT, [varp](short) {
-        delete varp;
-    }, &timeo);
-}
-
-// Undef more internals
-#undef MockPtrName
-#undef call
-
-} // extern "C"
 
 #endif
