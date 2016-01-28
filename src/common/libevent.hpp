@@ -44,7 +44,6 @@ void mk_libevent_event_cb(evutil_socket_t, short w, void *p);
 } // extern "C"
 
 namespace mk {
-
 namespace evutil {
 
 template <int (*func)(evutil_socket_t) = ::evutil_make_socket_nonblocking>
@@ -467,7 +466,7 @@ class Bufferevent {
 #endif
         // We pass `varp` so C code keeps us alive
         ::bufferevent_setcb(ptr->bevp, mk_libevent_bev_read,
-             mk_libevent_bev_write, mk_libevent_bev_event, varp);
+                            mk_libevent_bev_write, mk_libevent_bev_event, varp);
         return *varp;
     }
 

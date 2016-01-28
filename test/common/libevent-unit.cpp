@@ -58,16 +58,16 @@ static void record_if_called(event_base *) { destructor_was_called = true; }
 
 TEST_CASE("EventBase does not call destructor if not owned") {
     REQUIRE(destructor_was_called == false);
-    Var<EventBase> evbase = EventBase::assign<record_if_called>(
-        (event_base *) 128, false);
+    Var<EventBase> evbase =
+        EventBase::assign<record_if_called>((event_base *)128, false);
     REQUIRE(destructor_was_called == false);
 }
 
 TEST_CASE("EventBase does not call destructor if owned but evbase is null") {
     REQUIRE(destructor_was_called == false);
     // We cannot directly assign nullptr because of a check in assign():
-    Var<EventBase> evbase = EventBase::assign<record_if_called>(
-        (event_base *) 128, true);
+    Var<EventBase> evbase =
+        EventBase::assign<record_if_called>((event_base *)128, true);
     evbase->evbase = nullptr;
     REQUIRE(destructor_was_called == false);
 }
@@ -131,8 +131,10 @@ TEST_CASE("EventBase::loopbreak deals with event_base_loopbreak() failure") {
     REQUIRE_THROWS_AS(evb->loopbreak<fail>(), EventBaseLoopbreakError);
 }
 
-static int fail(event_base *, evutil_socket_t, short, event_callback_fn,
-                void *, const timeval *) { return -1; };
+static int fail(event_base *, evutil_socket_t, short, event_callback_fn, void *,
+                const timeval *) {
+    return -1;
+};
 
 TEST_CASE("EventBase::once deals with event_base_once() failure") {
     Var<EventBase> evb = EventBase::create();
@@ -265,8 +267,8 @@ static Var<Evbuffer> fill_with_n_extents(int n) {
         evb->add(first.data(), first.size());
         evb->add(second.data(), second.size());
         evb->add(third.data(), third.size());
-    } while ((count = evbuffer_peek(evb->evbuf, -1, nullptr, nullptr, 0)) > 0
-             && count < n);
+    } while ((count = evbuffer_peek(evb->evbuf, -1, nullptr, nullptr, 0)) > 0 &&
+             count < n);
     REQUIRE(count == n);
 
     return evb;
@@ -363,8 +365,8 @@ static int success(evbuffer *, evbuffer *, size_t count) {
 static void test_evbuffer_remove_buffer_success(int retval) {
     Var<Evbuffer> evb = Evbuffer::create();
     Var<Evbuffer> b = Evbuffer::create();
-    REQUIRE(evb->remove_buffer<success>(b, retval)
-            == (retval > 512 ? 512 : retval));
+    REQUIRE(evb->remove_buffer<success>(b, retval) ==
+            (retval > 512 ? 512 : retval));
 }
 
 TEST_CASE("Evbuffer::remove_buffer behaves on evbuffer_remove_buffer success") {
@@ -376,7 +378,7 @@ TEST_CASE("Evbuffer::remove_buffer behaves on evbuffer_remove_buffer success") {
 static evbuffer_ptr fail(evbuffer *, evbuffer_ptr *, size_t *,
                          enum evbuffer_eol_style) {
     evbuffer_ptr ptr;
-    memset(&ptr, 0, sizeof (ptr));
+    memset(&ptr, 0, sizeof(ptr));
     ptr.pos = -1;
     return ptr;
 }
@@ -422,9 +424,8 @@ TEST_CASE("Bufferevent::event_string works") {
 static bufferevent *fail(event_base *, evutil_socket_t, int) { return nullptr; }
 
 TEST_CASE("Bufferevent::socket_new deals with bufferevent_socket_new failure") {
-    REQUIRE_THROWS_AS(
-        Bufferevent::socket_new<fail>(EventBase::create(), -1, 0),
-        BuffereventSocketNewError);
+    REQUIRE_THROWS_AS(Bufferevent::socket_new<fail>(EventBase::create(), -1, 0),
+                      BuffereventSocketNewError);
 }
 
 // This function ensures that the Bufferevent allocated by `socket_new` is
@@ -443,9 +444,8 @@ static int fail(bufferevent *, sockaddr *, int) { return -1; }
 TEST_CASE("Bufferevent::socket_connect deals with bufferevent_socket_connect "
           "failure") {
     with_bufferevent([](Var<Bufferevent> bufev) {
-        REQUIRE_THROWS_AS(
-            bufev->socket_connect<fail>(nullptr, 0),
-            BuffereventSocketConnectError);
+        REQUIRE_THROWS_AS(bufev->socket_connect<fail>(nullptr, 0),
+                          BuffereventSocketConnectError);
     });
 }
 
@@ -492,17 +492,15 @@ static int fail(bufferevent *, short) { return -1; }
 
 TEST_CASE("Bufferevent::enable deals with bufferevent_enable failure") {
     with_bufferevent([](Var<Bufferevent> bufev) {
-        REQUIRE_THROWS_AS(bufev->enable<fail>(EV_READ),
-                          BuffereventEnableError);
+        REQUIRE_THROWS_AS(bufev->enable<fail>(EV_READ), BuffereventEnableError);
     });
 }
 
 static int success(bufferevent *, short) { return 0; }
 
 TEST_CASE("Bufferevent::enable deals with successful bufferevent_enable") {
-    with_bufferevent([](Var<Bufferevent> bufev) {
-        bufev->enable<success>(EV_READ);
-    });
+    with_bufferevent(
+        [](Var<Bufferevent> bufev) { bufev->enable<success>(EV_READ); });
 }
 
 TEST_CASE("Bufferevent::disable deals with bufferevent_disable failure") {
@@ -513,9 +511,8 @@ TEST_CASE("Bufferevent::disable deals with bufferevent_disable failure") {
 }
 
 TEST_CASE("Bufferevent::disable deals with successful bufferevent_disable") {
-    with_bufferevent([](Var<Bufferevent> bufev) {
-        bufev->disable<success>(EV_READ);
-    });
+    with_bufferevent(
+        [](Var<Bufferevent> bufev) { bufev->disable<success>(EV_READ); });
 }
 
 static int fail(bufferevent *, const timeval *, const timeval *) { return -1; }
@@ -523,9 +520,8 @@ static int fail(bufferevent *, const timeval *, const timeval *) { return -1; }
 TEST_CASE("Bufferevent::set_timeouts deals with bufferevent_set_timeouts "
           "failure") {
     with_bufferevent([](Var<Bufferevent> bufev) {
-        REQUIRE_THROWS_AS(
-            bufev->set_timeouts<fail>(nullptr, nullptr),
-            BuffereventSetTimeoutsError);
+        REQUIRE_THROWS_AS(bufev->set_timeouts<fail>(nullptr, nullptr),
+                          BuffereventSetTimeoutsError);
     });
 }
 
@@ -538,8 +534,8 @@ TEST_CASE("Bufferevent::openssl_filter_new deals with "
           "bufferevent_openssl_filter_new failure") {
     with_bufferevent([](Var<Bufferevent> bufev) {
         REQUIRE_THROWS_AS(
-            Bufferevent::openssl_filter_new<fail>(bufev->evbase, bufev,
-                                            nullptr, BUFFEREVENT_SSL_OPEN, 0),
+            Bufferevent::openssl_filter_new<fail>(bufev->evbase, bufev, nullptr,
+                                                  BUFFEREVENT_SSL_OPEN, 0),
             BuffereventOpensslFilterNewError);
     });
 }

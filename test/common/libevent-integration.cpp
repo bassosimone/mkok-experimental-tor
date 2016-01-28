@@ -16,12 +16,12 @@ TEST_CASE("Retrieve HTTP resource using bufferevent") {
     std::string output;
     std::string *po = &output;
     Var<EventBase> evbase = EventBase::create();
-    evhelpers::connect(
-        evbase, "130.192.16.172:80", [evbase, po](Var<Bufferevent> bev) {
-            evhelpers::sendrecv(bev, REQUEST, [evbase]() {
-                evhelpers::break_soon(evbase);
-            }, po);
-        }, &connected);
+    evhelpers::connect(evbase,
+                       "130.192.16.172:80", [evbase, po](Var<Bufferevent> bev) {
+                           evhelpers::sendrecv(bev, REQUEST, [evbase]() {
+                               evhelpers::break_soon(evbase);
+                           }, po);
+                       }, &connected);
     evbase->dispatch();
     REQUIRE(connected == true);
     REQUIRE(output != "");
@@ -32,10 +32,9 @@ TEST_CASE("Connect to closed port using bufferevent") {
     std::string output;
     std::string *po = &output;
     Var<EventBase> evbase = EventBase::create();
-    evhelpers::connect(evbase,
-                           "130.192.91.211:88", [evbase](Var<Bufferevent>) {
-                               evbase->loopbreak();
-                           }, &connected);
+    evhelpers::connect(evbase, "130.192.91.211:88", [evbase](Var<Bufferevent>) {
+        evbase->loopbreak();
+    }, &connected);
     evbase->dispatch();
     REQUIRE(output == "");
     REQUIRE(connected == false);
@@ -69,10 +68,10 @@ TEST_CASE("Connect to port where SSL is not active") {
     std::string *po = &output;
 
     Var<EventBase> evbase = EventBase::create();
-    evhelpers::ssl_connect(
-        evbase, "130.192.16.172:80", evhelpers::SslContext::get(),
-        [evbase](Var<Bufferevent>) { evbase->loopbreak(); },
-        &connected, &ssl_connected);
+    evhelpers::ssl_connect(evbase, "130.192.16.172:80",
+                           evhelpers::SslContext::get(),
+                           [evbase](Var<Bufferevent>) { evbase->loopbreak(); },
+                           &connected, &ssl_connected);
     evbase->dispatch();
 
     REQUIRE(connected == true);
