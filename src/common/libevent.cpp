@@ -33,7 +33,10 @@ static void is_ignored_by_cxx(mk::Var<mk::Bufferevent> *varp) {
 
 void mk_libevent_bev_read(bufferevent *, void *ptr) {
     auto varp = static_cast<mk::Var<mk::Bufferevent> *>(ptr);
+    // Only callback if C++ code is still interested to Bufferevent
     if (!varp->unique() && (*varp)->read_cb) (*varp)->read_cb();
+    // After the callback, check whether the C++ code is still interested
+    // to use this Bufferevent, otherwise "garbage collect" it
     if (varp->unique()) is_ignored_by_cxx(varp);
 }
 
