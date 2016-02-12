@@ -45,15 +45,16 @@ void mk_libevent_event_cb(evutil_socket_t, short, void *);
 namespace mk {
 namespace evutil {
 
-template <int (*func)(evutil_socket_t) = ::evutil_make_socket_nonblocking>
+template <decltype(evutil_make_socket_nonblocking) func =
+                            ::evutil_make_socket_nonblocking>
 void make_socket_nonblocking(evutil_socket_t s) {
     if (func(s) != 0) {
         MK_THROW(EvutilMakeSocketNonblockingError);
     }
 }
 
-template <int (*func)(const char *, sockaddr *,
-                      int *) = ::evutil_parse_sockaddr_port>
+template <decltype(evutil_parse_sockaddr_port) func =
+                                ::evutil_parse_sockaddr_port>
 Error __attribute__((warn_unused_result))
 parse_sockaddr_port(std::string s, sockaddr *p, int *n) {
     if (func(s.c_str(), p, n) != 0) {
@@ -62,7 +63,8 @@ parse_sockaddr_port(std::string s, sockaddr *p, int *n) {
     return NoError();
 }
 
-template <int (*func)(evutil_socket_t) = ::evutil_make_listen_socket_reuseable>
+template <decltype(evutil_make_listen_socket_reuseable) func =
+                            ::evutil_make_listen_socket_reuseable>
 void make_listen_socket_reuseable(evutil_socket_t s) {
     if (func(s) != 0) {
         MK_THROW(EvutilMakeListenSocketReuseableError);
@@ -79,7 +81,7 @@ class EventBase : public NonCopyable, public NonMovable {
     EventBase() {}
     ~EventBase() {}
 
-    template <void (*func)(event_base *) = ::event_base_free>
+    template <decltype(event_base_free) func = ::event_base_free>
     static Var<EventBase> assign(event_base *pointer, bool owned) {
         if (pointer == nullptr) {
             MK_THROW(NullPointerError);
@@ -97,13 +99,13 @@ class EventBase : public NonCopyable, public NonMovable {
         return base;
     }
 
-    template <event_base *(*construct)() = ::event_base_new,
-              void (*destruct)(event_base *) = ::event_base_free>
+    template <decltype(event_base_new) construct = ::event_base_new,
+              decltype(event_base_free) destruct = ::event_base_free>
     static Var<EventBase> create() {
         return assign<destruct>(construct(), true);
     }
 
-    template <int (*func)(event_base *) = ::event_base_dispatch>
+    template <decltype(event_base_dispatch) func = ::event_base_dispatch>
     int dispatch() {
         int ctrl = func(evbase);
         if (ctrl != 0 && ctrl != 1) {
@@ -112,7 +114,7 @@ class EventBase : public NonCopyable, public NonMovable {
         return ctrl;
     }
 
-    template <int (*func)(event_base *, int) = ::event_base_loop>
+    template <decltype(event_base_loop) func = ::event_base_loop>
     int loop(int flags) {
         int ctrl = func(evbase, flags);
         if (ctrl != 0 && ctrl != 1) {
@@ -121,16 +123,14 @@ class EventBase : public NonCopyable, public NonMovable {
         return ctrl;
     }
 
-    template <int (*func)(event_base *) = ::event_base_loopbreak>
+    template <decltype(event_base_loopbreak) func = ::event_base_loopbreak>
     void loopbreak() {
         if (func(evbase) != 0) {
             MK_THROW(EventBaseLoopbreakError);
         }
     }
 
-    template <int (*func)(event_base *, evutil_socket_t, short,
-                          event_callback_fn, void *,
-                          const timeval *) = ::event_base_once>
+    template <decltype(event_base_once) func = ::event_base_once>
     void once(evutil_socket_t sock, short what, std::function<void(short)> cb,
               const timeval *timeo = nullptr) {
         auto cbp = new std::function<void(short)>(cb);
@@ -149,7 +149,7 @@ class Evbuffer : public NonCopyable, public NonMovable {
     Evbuffer() {}
     ~Evbuffer() {}
 
-    template <void (*func)(evbuffer *) = ::evbuffer_free>
+    template <decltype(evbuffer_free) func = ::evbuffer_free>
     static Var<Evbuffer> assign(evbuffer *pointer, bool owned) {
         if (pointer == nullptr) {
             MK_THROW(NullPointerError);
@@ -167,37 +167,36 @@ class Evbuffer : public NonCopyable, public NonMovable {
         return evbuf;
     }
 
-    template <evbuffer *(*construct)() = ::evbuffer_new,
-              void (*destruct)(evbuffer *) = ::evbuffer_free>
+    template <decltype(evbuffer_new) construct = ::evbuffer_new,
+              decltype(evbuffer_free) destruct = ::evbuffer_free>
     static Var<Evbuffer> create() {
         return assign<destruct>(construct(), true);
     }
 
     size_t get_length() { return ::evbuffer_get_length(evbuf); }
 
-    template <int (*func)(evbuffer *, size_t) = ::evbuffer_drain>
+    template <decltype(evbuffer_drain) func = ::evbuffer_drain>
     void drain(size_t n) {
         if (func(evbuf, n) != 0) {
             MK_THROW(EvbufferDrainError);
         }
     }
 
-    template <int (*func)(evbuffer *, const void *, size_t) = ::evbuffer_add>
+    template <decltype(evbuffer_add) func = ::evbuffer_add>
     void add(const void *base, size_t count) {
         if (func(evbuf, base, count) != 0) {
             MK_THROW(EvbufferAddError);
         }
     }
 
-    template <int (*func)(evbuffer *, evbuffer *) = ::evbuffer_add_buffer>
+    template <decltype(evbuffer_add_buffer) func = ::evbuffer_add_buffer>
     void add_buffer(Var<Evbuffer> b) {
         if (func(evbuf, b->evbuf) != 0) {
             MK_THROW(EvbufferAddBufferError);
         }
     }
 
-    template <int (*func)(evbuffer *, ssize_t, evbuffer_ptr *, evbuffer_iovec *,
-                          int) = ::evbuffer_peek>
+    template <decltype(evbuffer_peek) func = ::evbuffer_peek>
     Var<evbuffer_iovec> peek(ssize_t len, evbuffer_ptr *start_at,
                              size_t &n_extents) {
         int required = func(evbuf, len, start_at, nullptr, 0);
@@ -222,8 +221,7 @@ class Evbuffer : public NonCopyable, public NonMovable {
         return retval;
     }
 
-    template <int (*func)(evbuffer *, ssize_t, evbuffer_ptr *, evbuffer_iovec *,
-                          int) = ::evbuffer_peek>
+    template <decltype(evbuffer_peek) func = ::evbuffer_peek>
     void for_each_(std::function<bool(const void *, size_t)> cb) {
         // Not part of libevent API but useful to wrap part of such API
         size_t n_extents = 0;
@@ -256,8 +254,7 @@ class Evbuffer : public NonCopyable, public NonMovable {
         return out;
     }
 
-    template <int (*func)(evbuffer *, evbuffer *,
-                          size_t) = ::evbuffer_remove_buffer>
+    template <decltype(evbuffer_remove_buffer) func = ::evbuffer_remove_buffer>
     int remove_buffer(Var<Evbuffer> b, size_t count) {
         int len = func(evbuf, b->evbuf, count);
         if (len < 0) {
@@ -266,9 +263,7 @@ class Evbuffer : public NonCopyable, public NonMovable {
         return len;
     }
 
-    template <
-        evbuffer_ptr (*func)(evbuffer *, evbuffer_ptr *, size_t *,
-                             enum evbuffer_eol_style) = ::evbuffer_search_eol>
+    template <decltype(evbuffer_search_eol) func  = ::evbuffer_search_eol>
     std::string readln(enum evbuffer_eol_style style) {
         size_t eol_length = 0;
         auto sre = func(evbuf, nullptr, &eol_length, style);
@@ -319,9 +314,9 @@ class Bufferevent : public NonCopyable, public NonMovable {
         return descr;
     }
 
-    template <bufferevent *(*construct)(event_base *, evutil_socket_t,
-                                        int) = ::bufferevent_socket_new,
-              void (*destruct)(bufferevent *) = ::bufferevent_free>
+    template <decltype(bufferevent_socket_new) construct =
+                                              ::bufferevent_socket_new,
+              decltype(bufferevent_free) destruct = ::bufferevent_free>
     static Var<Bufferevent> socket_new(Var<EventBase> base, evutil_socket_t fd,
                                        int flags) {
         Bufferevent *ptr = new Bufferevent;
@@ -347,8 +342,8 @@ class Bufferevent : public NonCopyable, public NonMovable {
         return *varp;
     }
 
-    template <int (*func)(bufferevent *, sockaddr *,
-                          int) = ::bufferevent_socket_connect>
+    template <decltype(bufferevent_socket_connect) func =
+                                    ::bufferevent_socket_connect>
     void socket_connect(sockaddr *sa, int len) {
         if (func(bevp, sa, len) != 0) {
             MK_THROW(BuffereventSocketConnectError);
@@ -362,16 +357,15 @@ class Bufferevent : public NonCopyable, public NonMovable {
         write_cb = writecb;
     }
 
-    template <int (*func)(bufferevent *, const void *,
-                          size_t) = ::bufferevent_write>
+    template <decltype(bufferevent_write) func  = ::bufferevent_write>
     void write(const void *base, size_t count) {
         if (func(bevp, base, count) != 0) {
             MK_THROW(BuffereventWriteError);
         }
     }
 
-    template <int (*func)(bufferevent *,
-                          evbuffer *) = ::bufferevent_write_buffer>
+    template <decltype(bufferevent_write_buffer) func =
+                                        ::bufferevent_write_buffer>
     void write_buffer(Var<Evbuffer> s) {
         if (func(bevp, s->evbuf) != 0) {
             MK_THROW(BuffereventWriteBufferError);
@@ -382,40 +376,39 @@ class Bufferevent : public NonCopyable, public NonMovable {
         return ::bufferevent_read(bevp, base, count);
     }
 
-    template <int (*func)(bufferevent *,
-                          evbuffer *) = ::bufferevent_read_buffer>
+    template <decltype(bufferevent_read_buffer) func =
+                                        ::bufferevent_read_buffer>
     void read_buffer(Var<Evbuffer> d) {
         if (func(bevp, d->evbuf) != 0) {
             MK_THROW(BuffereventReadBufferError);
         }
     }
 
-    template <int (*func)(bufferevent *, short) = ::bufferevent_enable>
+    template <decltype(bufferevent_enable) func = ::bufferevent_enable>
     void enable(short what) {
         if (func(bevp, what) != 0) {
             MK_THROW(BuffereventEnableError);
         }
     }
 
-    template <int (*func)(bufferevent *, short) = ::bufferevent_disable>
+    template <decltype(bufferevent_disable) func = ::bufferevent_disable>
     void disable(short what) {
         if (func(bevp, what) != 0) {
             MK_THROW(BuffereventDisableError);
         }
     }
 
-    template <int (*func)(bufferevent *, const timeval *,
-                          const timeval *) = ::bufferevent_set_timeouts>
+    template <decltype(bufferevent_set_timeouts) func =
+                                            ::bufferevent_set_timeouts>
     void set_timeouts(const timeval *rto, const timeval *wto) {
         if (func(bevp, rto, wto) != 0) {
             MK_THROW(BuffereventSetTimeoutsError);
         }
     }
 
-    template <bufferevent *(*construct)(event_base *, bufferevent *, ssl_st *,
-                                        bufferevent_ssl_state,
-                                        int) = ::bufferevent_openssl_filter_new,
-              void (*destruct)(bufferevent *) = ::bufferevent_free>
+    template <decltype(bufferevent_openssl_filter_new) construct =
+                                    ::bufferevent_openssl_filter_new,
+              decltype(bufferevent_free) destruct = ::bufferevent_free>
     static Var<Bufferevent>
     openssl_filter_new(Var<EventBase> base, Var<Bufferevent> underlying,
                        ssl_st *ssl, enum bufferevent_ssl_state state,
