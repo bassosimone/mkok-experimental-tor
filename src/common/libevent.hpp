@@ -11,6 +11,7 @@
 #include <event2/bufferevent_ssl.h>
 #include <event2/event.h>
 #include <event2/util.h>
+#include <event2/dns.h>
 #include <functional>
 #include <measurement_kit/common/constraints.hpp>
 #include <measurement_kit/common/error.hpp>
@@ -462,6 +463,38 @@ class Bufferevent : public NonCopyable, public NonMovable {
         return Evbuffer::assign(::bufferevent_get_output(bevp), false);
     }
 };
+
+class EvdnsBase {
+  public:
+    EventBase() {}
+    ~EventBase() {}
+
+
+
+    template <evdns_base *(*construct)(struct event_base *, int) = ::evdns_base_new> 
+    static Var<evdns_base> create (Var<event_base> base,
+             bool initialize_nameservers = true,  bool fail_requests = true) {
+        
+        pointer = construct( base.get(), initialize_nameserver);
+        Var<evdns_base> dns_base (new  
+
+        if (_base == NULL) {
+            MK_THROW (EvdnsBaseNewException);
+        }
+        return 
+    }
+
+    typedef std::function<void(int result, char type, int count, int ttl,
+                    std::vector<std::string> addresses) ResolveCallback;
+
+    void EvdnsBase::resolve_ipv4(Var<evdns_base> base, std::string name,
+                    ResolveCallback callback, int flags = DNS_QUERY_NO_SEACH);
+
+
+ private:
+    evdns_base _base = nullptr;
+}
+
 
 } // namespace
 
