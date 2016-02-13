@@ -93,3 +93,17 @@ TEST_CASE("event_base_once works") {
     evbase->dispatch();
     REQUIRE(called == true);
 }
+
+TEST_CASE("Resolve ipv4") {
+    Var<EventBase> evbase = EventBase::create();
+    Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase,true, true);
+    REQUIRE(dnsbase != nullptr);
+    EvdnsBase::resolve_ipv4 (dnsbase, "nexa.polito.it", 
+                        [evbase](int result, char type, int count, int ttl, 
+                            std::vector<std::string> addresses) {
+                            REQUIRE(result == DNS_ERR_NONE);
+                            REQUIRE(addresses[0]=="130.192.16.172");
+                            event_base_loopbreak(evbase->evbase);
+                        });
+    event_base_dispatch(evbase->evbase);
+}

@@ -12,6 +12,7 @@
 #include <event2/event.h>
 #include <event2/util.h>
 #include <event2/dns.h>
+#include <arpa/inet.h>
 #include <functional>
 #include <measurement_kit/common/constraints.hpp>
 #include <measurement_kit/common/error.hpp>
@@ -22,6 +23,7 @@
 #include <string>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <vector>
 
 // Forward declarations
 struct bufferevent;
@@ -466,34 +468,77 @@ class Bufferevent : public NonCopyable, public NonMovable {
 
 class EvdnsBase {
   public:
-    EventBase() {}
-    ~EventBase() {}
+    // Add a reference to Var<EventBase> base to make sure it is referenced
+    Var<EventBase> evbase = nullptr;
+    evdns_base *dns_base = nullptr;
 
+    EvdnsBase() {}
+    ~EvdnsBase() {}
 
-
-    template <evdns_base *(*construct)(struct event_base *, int) = ::evdns_base_new> 
-    static Var<evdns_base> create (Var<event_base> base,
+    template <decltype(evdns_base_new) construct = ::evdns_base_new,
+              decltype(evdns_base_free) destruct = ::evdns_base_free>
+    static Var<EvdnsBase> create (Var<EventBase> base,
              bool initialize_nameservers = true,  bool fail_requests = true) {
-        
-        pointer = construct( base.get(), initialize_nameserver);
-        Var<evdns_base> dns_base (new  
 
-        if (_base == NULL) {
-            MK_THROW (EvdnsBaseNewException);
+        auto pointer = construct (base->evbase, initialize_nameservers);
+        if (pointer == nullptr) {
+            MK_THROW (EvdnsBaseNewExceptionError);
         }
-        return 
+        Var<EvdnsBase> _base (new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
+            destruct (ptr->dns_base, fail_requests);
+            delete ptr;
+        });
+        _base->evbase = base;
+        _base->dns_base = pointer;
+        return _base; 
     }
 
     typedef std::function<void(int result, char type, int count, int ttl,
-                    std::vector<std::string> addresses) ResolveCallback;
+                    std::vector<std::string> addresses)> ResolveCallback;
+  
+	static std::vector<std::string> ipv4_address_list
+                                                (int count, void *addresses) {
+		std::vector<std::string> results;
+		static const int size = 4;
+		if (count >= 0 && count <= INT_MAX / size + 1) {
+			char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
+			for (int i = 0; i < count; ++i) {
+				// Note: address already in network byte order
+				if (inet_ntop(AF_INET, (char *)addresses + i * size, string,
+							  sizeof(string)) == nullptr) {
+					break;
+				}
+				results.push_back(string);
+			}
+		}
+		return results;
+	}
 
-    void EvdnsBase::resolve_ipv4(Var<evdns_base> base, std::string name,
-                    ResolveCallback callback, int flags = DNS_QUERY_NO_SEACH);
-
-
- private:
-    evdns_base _base = nullptr;
-}
+	typedef std::function<void(int, char, int, int, void *)> evdns_callback;
+	// TODO: C callbacks should be declared with C linkage
+	static void handle_resolve(int code, char type, int count, int ttl,
+							   void *addresses, void *opaque) {
+		evdns_callback *callback = static_cast<evdns_callback *>(opaque);
+		(*callback)(code, type, count, ttl, addresses);
+		delete callback;
+	}
+	
+    template <decltype(evdns_base_resolve_ipv4) resolve =
+                                                ::evdns_base_resolve_ipv4>
+	static void resolve_ipv4(Var<EvdnsBase> base, std::string name,
+                    ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+        // callback viene tenuta viva in quanto viene copiata nello scope
+		auto cb = new std::function<void(int, char, int, int, void *)>
+				   ([callback](int r, char t, int c, int ttl, void *addresses) {
+			callback(r, t, c, ttl, ipv4_address_list (c, addresses));
+		});
+        if (resolve (base->dns_base, name.c_str(), 
+                            flags, handle_resolve, cb) == nullptr) {
+			MK_THROW (EvdnsBaseResolveIpv4ExceptionError);
+        }
+    }
+	
+};
 
 
 } // namespace
