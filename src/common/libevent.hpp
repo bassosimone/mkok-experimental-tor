@@ -73,50 +73,41 @@ void make_listen_socket_reuseable(evutil_socket_t s) {
 
 } // namespace evutil
 
-class EventBase : public NonCopyable, public NonMovable {
+// proposal #1
+
+class EventBase {
   public:
-    event_base *evbase = nullptr;
-    bool owned = false;
+    Var<event_base> evbase;
 
-    EventBase() {}
-    ~EventBase() {}
-
-    template <decltype(event_base_free) func = ::event_base_free>
-    static Var<EventBase> assign(event_base *pointer, bool owned) {
-        if (pointer == nullptr) {
-            MK_THROW(NullPointerError);
-        }
-        Var<EventBase> base(new EventBase, [](EventBase *ptr) {
-            if (ptr->owned && ptr->evbase != nullptr) {
-                func(ptr->evbase);
-                ptr->evbase = nullptr;
-                ptr->owned = false;
+    template<decltype(event_base_new) alloc = event_base_new,
+             decltype(event_base_free) dealloc = event_base_free>
+    EventBase() {
+        evbase.reset(alloc(), [](event_base *base) {
+            if (base != nullptr) {
+                dealloc(base);
             }
-            delete ptr;
         });
-        base->evbase = pointer;
-        base->owned = owned;
-        return base;
+        if (!evbase) {
+            MK_THROW(EventBaseNewError);
+        }
     }
 
-    template <decltype(event_base_new) construct = ::event_base_new,
-              decltype(event_base_free) destruct = ::event_base_free>
-    static Var<EventBase> create() {
-        return assign<destruct>(construct(), true);
+    EventBase(event_base *p) {
+        evbase = Var<event_base>(p, [](event_base *){});
     }
 
-    template <decltype(event_base_dispatch) func = ::event_base_dispatch>
+    template <decltype(event_base_dispatch) func = event_base_dispatch>
     int dispatch() {
-        int ctrl = func(evbase);
+        int ctrl = func(*evbase);
         if (ctrl != 0 && ctrl != 1) {
             MK_THROW(EventBaseDispatchError);
         }
         return ctrl;
     }
 
-    template <decltype(event_base_loop) func = ::event_base_loop>
+    template <decltype(event_base_loop) func = event_base_loop>
     int loop(int flags) {
-        int ctrl = func(evbase, flags);
+        int ctrl = func(*evbase, flags);
         if (ctrl != 0 && ctrl != 1) {
             MK_THROW(EventBaseLoopError);
         }
@@ -125,7 +116,7 @@ class EventBase : public NonCopyable, public NonMovable {
 
     template <decltype(event_base_loopbreak) func = ::event_base_loopbreak>
     void loopbreak() {
-        if (func(evbase) != 0) {
+        if (func(*evbase) != 0) {
             MK_THROW(EventBaseLoopbreakError);
         }
     }
@@ -134,12 +125,69 @@ class EventBase : public NonCopyable, public NonMovable {
     void once(evutil_socket_t sock, short what, std::function<void(short)> cb,
               const timeval *timeo = nullptr) {
         auto cbp = new std::function<void(short)>(cb);
-        if (func(evbase, sock, what, mk_libevent_event_cb, cbp, timeo) != 0) {
+        if (func(*evbase, sock, what, mk_libevent_event_cb, cbp, timeo) != 0) {
             delete cbp;
             MK_THROW(EventBaseOnceError);
         }
     }
 };
+
+// proposal #2
+
+
+
+template<decltype(event_base_new) alloc = ::event_base_new,
+        decltype(event_base_free) dealloc = ::event_base_free>
+Var<event_base> event_base_new() {
+    Var<event_base> evbase(alloc(), [](event_base *base) {
+        if (base != nullptr) {
+            dealloc(base);
+        }
+    });
+    if (!evbase) {
+        MK_THROW(EventBaseNewError);
+    }
+    return evbase;
+}
+
+Var<event_base> event_base_wrap(event_base *p) {
+    return Var<event_base>(p, [](event_base *){});
+}
+
+template <decltype(event_base_dispatch) func = ::event_base_dispatch>
+int event_base_dispatch(Var<event_base> base) {
+    int ctrl = func(base->evbase);
+    if (ctrl != 0 && ctrl != 1) {
+        MK_THROW(EventBaseDispatchError);
+    }
+    return ctrl;
+}
+
+template <decltype(event_base_loop) func = ::event_base_loop>
+int event_base_loop(Var<event_base> base, int flags) {
+    int ctrl = func(base->base, flags);
+    if (ctrl != 0 && ctrl != 1) {
+        MK_THROW(EventBaseLoopError);
+    }
+    return ctrl;
+}
+
+template <decltype(event_base_loopbreak) func = ::event_base_loopbreak>
+void event_base_loopbreak(Var<event_base> base) {
+    if (func(base->evbase) != 0) {
+        MK_THROW(EventBaseLoopbreakError);
+    }
+}
+
+template <decltype(event_base_once) func = ::event_base_once>
+void event_base_once(Var<event_base> base, evutil_socket_t sock, short what,
+                     std::function<void(short)> cb, const timeval *timeo = nullptr) {
+    auto cbp = new std::function<void(short)>(cb);
+    if (func(base->evbase, sock, what, mk_libevent_event_cb, cbp, timeo) != 0) {
+        delete cbp;
+        MK_THROW(EventBaseOnceError);
+    }
+}
 
 class Evbuffer : public NonCopyable, public NonMovable {
   public:
