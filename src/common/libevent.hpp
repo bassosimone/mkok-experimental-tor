@@ -134,9 +134,7 @@ class EventBase {
 
 // proposal #2
 
-class EventBase {
-  public:
-    Var<event_base> evbase;
+
 
 template<decltype(event_base_new) alloc = ::event_base_new,
         decltype(event_base_free) dealloc = ::event_base_free>
