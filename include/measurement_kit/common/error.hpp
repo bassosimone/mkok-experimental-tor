@@ -102,10 +102,18 @@ MK_DECLARE_ERROR(28, EvdnsBaseNewException, "");
 MK_DECLARE_ERROR(29, EvdnsBaseResolveIpv4Exception, "");
 MK_DECLARE_ERROR(30, EvdnsBaseResolveIpv6Exception, "");
 MK_DECLARE_ERROR(31, EvdnsBaseResolveReverseIpv4Exception, "");
-MK_DECLARE_ERROR(32, InvalidIPv4Address, "");
-MK_DECLARE_ERROR(33, InvalidIPv6Address, "");
+MK_DECLARE_ERROR(32, EvdnsBaseResolveReverseIpv6Exception, "");
+MK_DECLARE_ERROR(33, InvalidIPv4Address, "");
+MK_DECLARE_ERROR(34, InvalidIPv6Address, "");
+MK_DECLARE_ERROR(35, EvdnsBaseClearNameserversAndSuspendException, "");
 
-MK_DECLARE_ERROR(99, Type, "");
+MK_DECLARE_ERROR(37, EvdnsBaseCountNameserversException, "");
+MK_DECLARE_ERROR(38, EvdnsBaseNameserverIpAddException, "");
+MK_DECLARE_ERROR(39, EvdnsBaseResumeException, "");
+MK_DECLARE_ERROR(40, EvdnsBaseSetOptionException, "");
+MK_DECLARE_ERROR(41, EvdnsBaseSetOptionExceptionError, "");
+
+MK_DECLARE_ERROR(42, Type, "");
 
 } // namespace mk
 #endif

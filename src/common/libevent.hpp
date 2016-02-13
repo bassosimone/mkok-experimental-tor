@@ -608,6 +608,70 @@ class EvdnsBase {
             MK_THROW(EvdnsBaseResolveReverseIpv4ExceptionError);
         };
     };
+
+    static void resolve_reverse_ipv6(Var<EvdnsBase> base, std::string address,
+                                     ResolveCallback callback,
+                                     int flags = DNS_QUERY_NO_SEARCH) {
+        auto cb = new std::function<void(int, char, int, int, void *)>(
+            [callback](int r, char t, int c, int ttl, void *addresses) {
+                callback(r, t, c, ttl, ptr_address_list(c, addresses));
+            });
+        in6_addr na;
+        if (evdns_base_resolve_reverse_ipv6(base->dns_base,
+                                            ipv6_pton(address, &na), flags,
+                                            handle_resolve, cb) == nullptr) {
+            MK_THROW(EvdnsBaseResolveReverseIpv6ExceptionError);
+        };
+    };
+
+    static void clear_nameservers_and_suspend(Var<EvdnsBase> base) {
+        if (evdns_base_clear_nameservers_and_suspend(base->dns_base) != 0) {
+            MK_THROW(EvdnsBaseClearNameserversAndSuspendExceptionError);
+        }
+    }
+
+    static unsigned count_nameservers(Var<EvdnsBase> base) {
+        auto r = evdns_base_count_nameservers(base->dns_base);
+        if (r < 0) {
+            MK_THROW(EvdnsBaseCountNameserversExceptionError);
+        }
+        return r;
+    }
+
+    static void add_nameserver(Var<EvdnsBase> base, std::string nameserver) {
+        if (evdns_base_nameserver_ip_add(base->dns_base, nameserver.c_str()) !=
+            0) {
+            MK_THROW(EvdnsBaseNameserverIpAddExceptionError);
+        }
+    }
+
+    static void resume(Var<EvdnsBase> base) {
+        if (evdns_base_resume(base->dns_base) != 0) {
+            MK_THROW(EvdnsBaseResumeExceptionError);
+        }
+    }
+
+    static void set_option_attempts(Var<EvdnsBase> base, unsigned count) {
+        if (evdns_base_set_option(base->dns_base, "attempts",
+                                  std::to_string(count).c_str()) != 0) {
+            MK_THROW(EvdnsBaseSetOptionExceptionError);
+        }
+    }
+
+    static void set_option_timeout(Var<EvdnsBase> base, double timeo) {
+        if (evdns_base_set_option(base->dns_base, "timeout",
+                                  std::to_string(timeo).c_str()) != 0) {
+            MK_THROW(EvdnsBaseSetOptionExceptionError);
+        }
+    }
+
+    static void set_option_randomize_case(Var<EvdnsBase> base, bool yesno) {
+        int b = yesno;
+        if (evdns_base_set_option(base->dns_base, "randomize-case",
+                                  std::to_string(b).c_str()) != 0) {
+            MK_THROW(EvdnsBaseSetOptionExceptionError);
+        }
+    }
 };
 
 } // namespace
