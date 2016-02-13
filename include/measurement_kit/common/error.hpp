@@ -101,6 +101,9 @@ MK_DECLARE_ERROR(27, EvbufferPullup, "");
 MK_DECLARE_ERROR(28, EvdnsBaseNewException, "");
 MK_DECLARE_ERROR(29, EvdnsBaseResolveIpv4Exception, "");
 MK_DECLARE_ERROR(30, EvdnsBaseResolveIpv6Exception, "");
+MK_DECLARE_ERROR(31, EvdnsBaseResolveReverseIpv4Exception, "");
+MK_DECLARE_ERROR(32, InvalidIPv4Address, "");
+MK_DECLARE_ERROR(33, InvalidIPv6Address, "");
 
 MK_DECLARE_ERROR(99, Type, "");
 

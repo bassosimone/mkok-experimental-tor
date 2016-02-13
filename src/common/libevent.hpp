@@ -477,100 +477,138 @@ class EvdnsBase {
 
     template <decltype(evdns_base_new) construct = ::evdns_base_new,
               decltype(evdns_base_free) destruct = ::evdns_base_free>
-    static Var<EvdnsBase> create (Var<EventBase> base,
-             bool initialize_nameservers = true,  bool fail_requests = true) {
+    static Var<EvdnsBase> create(Var<EventBase> base,
+                                 bool initialize_nameservers = true,
+                                 bool fail_requests = true) {
 
-        auto pointer = construct (base->evbase, initialize_nameservers);
+        auto pointer = construct(base->evbase, initialize_nameservers);
         if (pointer == nullptr) {
-            MK_THROW (EvdnsBaseNewExceptionError);
+            MK_THROW(EvdnsBaseNewExceptionError);
         }
-        Var<EvdnsBase> _base (new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
-            destruct (ptr->dns_base, fail_requests);
+        Var<EvdnsBase> _base(new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
+            destruct(ptr->dns_base, fail_requests);
             delete ptr;
         });
         _base->evbase = base;
         _base->dns_base = pointer;
-        return _base; 
+        return _base;
     }
 
     typedef std::function<void(int result, char type, int count, int ttl,
-                    std::vector<std::string> addresses)> ResolveCallback;
-  
-	static std::vector<std::string> ipv4_address_list
-                                                (int count, void *addresses) {
-		std::vector<std::string> results;
-		static const int size = 4;
-		if (count >= 0 && count <= INT_MAX / size + 1) {
-			char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
-			for (int i = 0; i < count; ++i) {
-				// Note: address already in network byte order
-				if (inet_ntop(AF_INET, (char *)addresses + i * size, string,
-							  sizeof(string)) == nullptr) {
-					break;
-				}
-				results.push_back(string);
-			}
-		}
-		return results;
-	}
+                               std::vector<std::string> addresses)>
+        ResolveCallback;
 
-	typedef std::function<void(int, char, int, int, void *)> evdns_callback;
-	// TODO: C callbacks should be declared with C linkage
-	static void handle_resolve(int code, char type, int count, int ttl,
-							   void *addresses, void *opaque) {
-		evdns_callback *callback = static_cast<evdns_callback *>(opaque);
-		(*callback)(code, type, count, ttl, addresses);
-		delete callback;
-	}
-	
-    template <decltype(evdns_base_resolve_ipv4) resolve =
-                                                ::evdns_base_resolve_ipv4>
-	static void resolve_ipv4(Var<EvdnsBase> base, std::string name,
-                    ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+    static std::vector<std::string> ipv4_address_list(int count,
+                                                      void *addresses) {
+        std::vector<std::string> results;
+        static const int size = 4;
+        if (count >= 0 && count <= INT_MAX / size + 1) {
+            char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
+            for (int i = 0; i < count; ++i) {
+                // Note: address already in network byte order
+                if (inet_ntop(AF_INET, (char *)addresses + i * size, string,
+                              sizeof(string)) == nullptr) {
+                    break;
+                }
+                results.push_back(string);
+            }
+        }
+        return results;
+    }
+
+    typedef std::function<void(int, char, int, int, void *)> evdns_callback;
+    // TODO: C callbacks should be declared with C linkage
+    static void handle_resolve(int code, char type, int count, int ttl,
+                               void *addresses, void *opaque) {
+        evdns_callback *callback = static_cast<evdns_callback *>(opaque);
+        (*callback)(code, type, count, ttl, addresses);
+        delete callback;
+    }
+
+    template <
+        decltype(evdns_base_resolve_ipv4) resolve = ::evdns_base_resolve_ipv4>
+    static void resolve_ipv4(Var<EvdnsBase> base, std::string name,
+                             ResolveCallback callback,
+                             int flags = DNS_QUERY_NO_SEARCH) {
         // callback viene tenuta viva in quanto viene copiata nello scope
-		auto cb = new std::function<void(int, char, int, int, void *)>
-				   ([callback](int r, char t, int c, int ttl, void *addresses) {
-			callback(r, t, c, ttl, ipv4_address_list (c, addresses));
-		});
-        if (resolve (base->dns_base, name.c_str(), 
-                            flags, handle_resolve, cb) == nullptr) {
-			MK_THROW (EvdnsBaseResolveIpv4ExceptionError);
+        auto cb = new std::function<void(int, char, int, int, void *)>(
+            [callback](int r, char t, int c, int ttl, void *addresses) {
+                callback(r, t, c, ttl, ipv4_address_list(c, addresses));
+            });
+        if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
+            nullptr) {
+            MK_THROW(EvdnsBaseResolveIpv4ExceptionError);
         }
     }
-   
-	static std::vector<std::string> ipv6_address_list
-                                                (int count, void *addresses) {
-		std::vector<std::string> results;
-		static const int size = 16;
-		if (count >= 0 && count <= INT_MAX / size + 1) {
-			char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
-			for (int i = 0; i < count; ++i) {
-				// Note: address already in network byte order
-				if (inet_ntop(AF_INET6, (char *)addresses + i * size, string,
-							  sizeof(string)) == nullptr) {
-					break;
-				}
-				results.push_back(string);
-			}
-		}
-		return results;
-	}
- 
-    template <decltype(evdns_base_resolve_ipv6) resolve =
-                                        	::evdns_base_resolve_ipv6>
-    static void resolve_ipv6(Var<EvdnsBase> base, std::string name,
-        ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
-		auto cb = new std::function<void(int, char, int, int, void *)>
-				   ([callback](int r, char t, int c, int ttl, void *addresses) {
-			callback(r, t, c, ttl, ipv6_address_list (c, addresses));
-		});
-       	if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb)
-																== nullptr) {
-			MK_THROW (EvdnsBaseResolveIpv6ExceptionError);
-		}
-    }
-};
 
+    static std::vector<std::string> ipv6_address_list(int count,
+                                                      void *addresses) {
+        std::vector<std::string> results;
+        static const int size = 16;
+        if (count >= 0 && count <= INT_MAX / size + 1) {
+            char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
+            for (int i = 0; i < count; ++i) {
+                // Note: address already in network byte order
+                if (inet_ntop(AF_INET6, (char *)addresses + i * size, string,
+                              sizeof(string)) == nullptr) {
+                    break;
+                }
+                results.push_back(string);
+            }
+        }
+        return results;
+    }
+
+    template <
+        decltype(evdns_base_resolve_ipv6) resolve = ::evdns_base_resolve_ipv6>
+    static void resolve_ipv6(Var<EvdnsBase> base, std::string name,
+                             ResolveCallback callback,
+                             int flags = DNS_QUERY_NO_SEARCH) {
+        auto cb = new std::function<void(int, char, int, int, void *)>(
+            [callback](int r, char t, int c, int ttl, void *addresses) {
+                callback(r, t, c, ttl, ipv6_address_list(c, addresses));
+            });
+        if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
+            nullptr) {
+            MK_THROW(EvdnsBaseResolveIpv6ExceptionError);
+        }
+    }
+
+    static std::vector<std::string> ptr_address_list(int count,
+                                                     void *addresses) {
+        std::vector<std::string> results;
+        results.push_back(std::string(*(char **)addresses));
+        return results;
+    }
+
+    static in_addr *ipv4_pton(std::string address, in_addr *netaddr) {
+        if (inet_pton(AF_INET, address.c_str(), netaddr) != 1) {
+            throw InvalidIPv4AddressError();
+        }
+        return (netaddr);
+    }
+
+    static in6_addr *ipv6_pton(std::string address, in6_addr *netaddr) {
+        if (inet_pton(AF_INET6, address.c_str(), netaddr) != 1) {
+            throw InvalidIPv6AddressError();
+        }
+        return (netaddr);
+    }
+
+    static void resolve_reverse(Var<EvdnsBase> base, std::string address,
+                                ResolveCallback callback,
+                                int flags = DNS_QUERY_NO_SEARCH) {
+        auto cb = new std::function<void(int, char, int, int, void *)>(
+            [callback](int r, char t, int c, int ttl, void *addresses) {
+                callback(r, t, c, ttl, ptr_address_list(c, addresses));
+            });
+        in_addr na;
+        if (evdns_base_resolve_reverse(base->dns_base, ipv4_pton(address, &na),
+                                       flags, handle_resolve, cb) == nullptr) {
+            MK_THROW(EvdnsBaseResolveReverseIpv4ExceptionError);
+        };
+    };
+};
 
 } // namespace
 
