@@ -73,7 +73,7 @@ void make_listen_socket_reuseable(evutil_socket_t s) {
 
 } // namespace evutil
 
-// possibility #1
+// proposal #1
 
 class EventBase {
   public:
@@ -131,6 +131,65 @@ class EventBase {
         }
     }
 };
+
+// proposal #2
+
+class EventBase {
+  public:
+    Var<event_base> evbase;
+
+template<decltype(event_base_new) alloc = ::event_base_new,
+        decltype(event_base_free) dealloc = ::event_base_free>
+Var<event_base> event_base_new() {
+    Var<event_base> evbase(alloc(), [](event_base *base) {
+        if (base != nullptr) {
+            dealloc(base);
+        }
+    });
+    if (!evbase) {
+        MK_THROW(EventBaseNewError);
+    }
+    return evbase;
+}
+
+Var<event_base> event_base_wrap(event_base *p) {
+    return Var<event_base>(p, [](event_base *){});
+}
+
+template <decltype(event_base_dispatch) func = ::event_base_dispatch>
+int event_base_dispatch(Var<event_base> base) {
+    int ctrl = func(base->evbase);
+    if (ctrl != 0 && ctrl != 1) {
+        MK_THROW(EventBaseDispatchError);
+    }
+    return ctrl;
+}
+
+template <decltype(event_base_loop) func = ::event_base_loop>
+int event_base_loop(Var<event_base> base, int flags) {
+    int ctrl = func(base->base, flags);
+    if (ctrl != 0 && ctrl != 1) {
+        MK_THROW(EventBaseLoopError);
+    }
+    return ctrl;
+}
+
+template <decltype(event_base_loopbreak) func = ::event_base_loopbreak>
+void event_base_loopbreak(Var<event_base> base) {
+    if (func(base->evbase) != 0) {
+        MK_THROW(EventBaseLoopbreakError);
+    }
+}
+
+template <decltype(event_base_once) func = ::event_base_once>
+void event_base_once(Var<event_base> base, evutil_socket_t sock, short what,
+                     std::function<void(short)> cb, const timeval *timeo = nullptr) {
+    auto cbp = new std::function<void(short)>(cb);
+    if (func(base->evbase, sock, what, mk_libevent_event_cb, cbp, timeo) != 0) {
+        delete cbp;
+        MK_THROW(EventBaseOnceError);
+    }
+}
 
 class Evbuffer : public NonCopyable, public NonMovable {
   public:
