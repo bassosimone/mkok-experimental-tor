@@ -537,7 +537,38 @@ class EvdnsBase {
 			MK_THROW (EvdnsBaseResolveIpv4ExceptionError);
         }
     }
-	
+   
+	static std::vector<std::string> ipv6_address_list
+                                                (int count, void *addresses) {
+		std::vector<std::string> results;
+		static const int size = 16;
+		if (count >= 0 && count <= INT_MAX / size + 1) {
+			char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
+			for (int i = 0; i < count; ++i) {
+				// Note: address already in network byte order
+				if (inet_ntop(AF_INET6, (char *)addresses + i * size, string,
+							  sizeof(string)) == nullptr) {
+					break;
+				}
+				results.push_back(string);
+			}
+		}
+		return results;
+	}
+ 
+    template <decltype(evdns_base_resolve_ipv6) resolve =
+                                        	::evdns_base_resolve_ipv6>
+    static void resolve_ipv6(Var<EvdnsBase> base, std::string name,
+        ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+		auto cb = new std::function<void(int, char, int, int, void *)>
+				   ([callback](int r, char t, int c, int ttl, void *addresses) {
+			callback(r, t, c, ttl, ipv6_address_list (c, addresses));
+		});
+       	if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb)
+																== nullptr) {
+			MK_THROW (EvdnsBaseResolveIpv6ExceptionError);
+		}
+    }
 };
 
 

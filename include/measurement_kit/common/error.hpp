@@ -100,8 +100,9 @@ MK_DECLARE_ERROR(27, EvbufferPullup, "");
 
 MK_DECLARE_ERROR(28, EvdnsBaseNewException, "");
 MK_DECLARE_ERROR(29, EvdnsBaseResolveIpv4Exception, "");
+MK_DECLARE_ERROR(30, EvdnsBaseResolveIpv6Exception, "");
 
-MK_DECLARE_ERROR(30, Type, "");
+MK_DECLARE_ERROR(99, Type, "");
 
 } // namespace mk
 #endif
