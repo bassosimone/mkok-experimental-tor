@@ -500,15 +500,21 @@ class EvdnsBase {
                                std::vector<std::string> addresses)>
         ResolveCallback;
 
-    static std::vector<std::string> ipv4_address_list(int count,
-                                                      void *addresses) {
+    static std::vector<std::string> ip_address_list(int count, void *addresses,
+                                                    bool ipv4) {
         std::vector<std::string> results;
-        static const int size = 4;
+        int size;
+        if (ipv4 == true) {
+            size = 4;
+        } else {
+            size = 16;
+        }
         if (count >= 0 && count <= INT_MAX / size + 1) {
             char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
             for (int i = 0; i < count; ++i) {
                 // Note: address already in network byte order
-                if (inet_ntop(AF_INET, (char *)addresses + i * size, string,
+                if (inet_ntop((ipv4 == true) ? AF_INET : AF_INET6,
+                              (char *)addresses + i * size, string,
                               sizeof(string)) == nullptr) {
                     break;
                 }
@@ -528,30 +534,12 @@ class EvdnsBase {
         // callback viene tenuta viva in quanto viene copiata nello scope
         auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ipv4_address_list(c, addresses));
+                callback(r, t, c, ttl, ip_address_list(c, addresses, true));
             });
         if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
             nullptr) {
             MK_THROW(EvdnsBaseResolveIpv4Error);
         }
-    }
-
-    static std::vector<std::string> ipv6_address_list(int count,
-                                                      void *addresses) {
-        std::vector<std::string> results;
-        static const int size = 16;
-        if (count >= 0 && count <= INT_MAX / size + 1) {
-            char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
-            for (int i = 0; i < count; ++i) {
-                // Note: address already in network byte order
-                if (inet_ntop(AF_INET6, (char *)addresses + i * size, string,
-                              sizeof(string)) == nullptr) {
-                    break;
-                }
-                results.push_back(string);
-            }
-        }
-        return results;
     }
 
     template <
@@ -561,7 +549,7 @@ class EvdnsBase {
                              int flags = DNS_QUERY_NO_SEARCH) {
         auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ipv6_address_list(c, addresses));
+                callback(r, t, c, ttl, ip_address_list(c, addresses, false));
             });
         if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
             nullptr) {
