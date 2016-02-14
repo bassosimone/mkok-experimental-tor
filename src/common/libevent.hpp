@@ -560,6 +560,7 @@ class EvdnsBase {
     static std::vector<std::string> ptr_address_list(int count,
                                                      void *addresses) {
         std::vector<std::string> results;
+        // Note: cast magic copied from libevent regress tests
         results.push_back(std::string(*(char **)addresses));
         return results;
     }
