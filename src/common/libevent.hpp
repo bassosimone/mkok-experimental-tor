@@ -42,7 +42,8 @@ void mk_libevent_bev_read(bufferevent *, void *);
 void mk_libevent_bev_write(bufferevent *, void *);
 void mk_libevent_bev_event(bufferevent *, short, void *);
 void mk_libevent_event_cb(evutil_socket_t, short, void *);
-
+void handle_resolve(int code, char type, int count, int ttl, void *addresses,
+                    void *opaque);
 } // extern "C"
 
 namespace mk {
@@ -485,10 +486,11 @@ class EvdnsBase {
         if (pointer == nullptr) {
             MK_THROW(EvdnsBaseNewError);
         }
-        Var<EvdnsBase> evdns_base(new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
-            destruct(ptr->dns_base, fail_requests);
-            delete ptr;
-        });
+        Var<EvdnsBase> evdns_base(new EvdnsBase,
+                                  [fail_requests](EvdnsBase *ptr) {
+                                      destruct(ptr->dns_base, fail_requests);
+                                      delete ptr;
+                                  });
         evdns_base->evbase = base;
         evdns_base->dns_base = pointer;
         return evdns_base;
@@ -517,14 +519,6 @@ class EvdnsBase {
     }
 
     typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
-   
-    // TODO: C callbacks should be declared with C linkage
-    static void handle_resolve(int code, char type, int count, int ttl,
-                               void *addresses, void *opaque) {
-        EvdnsCallback *callback = static_cast<EvdnsCallback *>(opaque);
-        (*callback)(code, type, count, ttl, addresses);
-        delete callback;
-    }
 
     template <
         decltype(evdns_base_resolve_ipv4) resolve = ::evdns_base_resolve_ipv4>
