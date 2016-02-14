@@ -485,13 +485,13 @@ class EvdnsBase {
         if (pointer == nullptr) {
             MK_THROW(EvdnsBaseNewError);
         }
-        Var<EvdnsBase> _base(new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
+        Var<EvdnsBase> evdns_base(new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
             destruct(ptr->dns_base, fail_requests);
             delete ptr;
         });
-        _base->evbase = base;
-        _base->dns_base = pointer;
-        return _base;
+        evdns_base->evbase = base;
+        evdns_base->dns_base = pointer;
+        return evdns_base;
     }
 
     typedef std::function<void(int result, char type, int count, int ttl,
