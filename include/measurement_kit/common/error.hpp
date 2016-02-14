@@ -112,6 +112,9 @@ MK_DECLARE_ERROR(38, EvdnsBaseNameserverIpAddError, "");
 MK_DECLARE_ERROR(39, EvdnsBaseResumeError, "");
 MK_DECLARE_ERROR(40, EvdnsBaseSetOptionError, "");
 
+MK_DECLARE_ERROR(41, HttpParserUpgradeError, "");
+MK_DECLARE_ERROR(42, HttpParserGenericParseError, "");
+
 MK_DECLARE_ERROR(42, TypeError, "");
 
 } // namespace mk

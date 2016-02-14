@@ -111,14 +111,16 @@ TEST_CASE("Resolve ipv6 works") {
     Var<EventBase> evbase = EventBase::create();
     Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase);
     REQUIRE(dnsbase != nullptr);
-    EvdnsBase::resolve_ipv6(dnsbase, "google.com",
-                            [evbase](int result, char type, int count, int ttl,
-                                     std::vector<std::string> addresses) {
-                                REQUIRE(result == DNS_ERR_NONE);
-                                REQUIRE(addresses[0] ==
-                                        "2a00:1450:4001:807::200e");
-                                event_base_loopbreak(evbase->evbase);
-                            });
+    EvdnsBase::resolve_ipv6(
+        dnsbase, "ooni.torproject.org",
+        [evbase](int result, char type, int count, int ttl,
+                 std::vector<std::string> addresses) {
+            REQUIRE(result == DNS_ERR_NONE);
+            REQUIRE(std::find(addresses.begin(), addresses.end(),
+                              "2620::6b0:b:1a1a:0:26e5:4810") !=
+                    addresses.end());
+            event_base_loopbreak(evbase->evbase);
+        });
     event_base_dispatch(evbase->evbase);
 }
 
@@ -142,11 +144,11 @@ TEST_CASE("Resolve ptr ipv6 works") {
     Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase);
     REQUIRE(dnsbase != nullptr);
     EvdnsBase::resolve_reverse_ipv6(
-        dnsbase, "2a00:1450:4001:807::200e",
+        dnsbase, "2620::6b0:b:1a1a:0:26e5:4810",
         [evbase](int result, char type, int count, int ttl,
                  std::vector<std::string> addresses) {
             REQUIRE(result == DNS_ERR_NONE);
-            REQUIRE(addresses[0] == "");
+            REQUIRE(addresses[0] == "aroides.torproject.org");
             event_base_loopbreak(evbase->evbase);
         });
     event_base_dispatch(evbase->evbase);
