@@ -516,11 +516,12 @@ class EvdnsBase {
         return results;
     }
 
-    typedef std::function<void(int, char, int, int, void *)> evdns_callback;
+    typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
+   
     // TODO: C callbacks should be declared with C linkage
     static void handle_resolve(int code, char type, int count, int ttl,
                                void *addresses, void *opaque) {
-        evdns_callback *callback = static_cast<evdns_callback *>(opaque);
+        EvdnsCallback *callback = static_cast<EvdnsCallback *>(opaque);
         (*callback)(code, type, count, ttl, addresses);
         delete callback;
     }
@@ -531,7 +532,7 @@ class EvdnsBase {
                              ResolveCallback callback,
                              int flags = DNS_QUERY_NO_SEARCH) {
         // callback viene tenuta viva in quanto viene copiata nello scope
-        auto cb = new std::function<void(int, char, int, int, void *)>(
+        auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
                 callback(r, t, c, ttl, ipv4_address_list(c, addresses));
             });
@@ -564,7 +565,7 @@ class EvdnsBase {
     static void resolve_ipv6(Var<EvdnsBase> base, std::string name,
                              ResolveCallback callback,
                              int flags = DNS_QUERY_NO_SEARCH) {
-        auto cb = new std::function<void(int, char, int, int, void *)>(
+        auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
                 callback(r, t, c, ttl, ipv6_address_list(c, addresses));
             });
@@ -598,7 +599,7 @@ class EvdnsBase {
     static void resolve_reverse(Var<EvdnsBase> base, std::string address,
                                 ResolveCallback callback,
                                 int flags = DNS_QUERY_NO_SEARCH) {
-        auto cb = new std::function<void(int, char, int, int, void *)>(
+        auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
                 callback(r, t, c, ttl, ptr_address_list(c, addresses));
             });
@@ -612,7 +613,7 @@ class EvdnsBase {
     static void resolve_reverse_ipv6(Var<EvdnsBase> base, std::string address,
                                      ResolveCallback callback,
                                      int flags = DNS_QUERY_NO_SEARCH) {
-        auto cb = new std::function<void(int, char, int, int, void *)>(
+        auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
                 callback(r, t, c, ttl, ptr_address_list(c, addresses));
             });
