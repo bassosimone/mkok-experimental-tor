@@ -483,7 +483,7 @@ class EvdnsBase {
 
         auto pointer = construct(base->evbase, initialize_nameservers);
         if (pointer == nullptr) {
-            MK_THROW(EvdnsBaseNewExceptionError);
+            MK_THROW(EvdnsBaseNewError);
         }
         Var<EvdnsBase> _base(new EvdnsBase, [fail_requests](EvdnsBase *ptr) {
             destruct(ptr->dns_base, fail_requests);
@@ -537,7 +537,7 @@ class EvdnsBase {
             });
         if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
             nullptr) {
-            MK_THROW(EvdnsBaseResolveIpv4ExceptionError);
+            MK_THROW(EvdnsBaseResolveIpv4Error);
         }
     }
 
@@ -570,7 +570,7 @@ class EvdnsBase {
             });
         if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
             nullptr) {
-            MK_THROW(EvdnsBaseResolveIpv6ExceptionError);
+            MK_THROW(EvdnsBaseResolveIpv6Error);
         }
     }
 
@@ -605,7 +605,7 @@ class EvdnsBase {
         in_addr na;
         if (evdns_base_resolve_reverse(base->dns_base, ipv4_pton(address, &na),
                                        flags, handle_resolve, cb) == nullptr) {
-            MK_THROW(EvdnsBaseResolveReverseIpv4ExceptionError);
+            MK_THROW(EvdnsBaseResolveReverseIpv4Error);
         };
     };
 
@@ -620,20 +620,20 @@ class EvdnsBase {
         if (evdns_base_resolve_reverse_ipv6(base->dns_base,
                                             ipv6_pton(address, &na), flags,
                                             handle_resolve, cb) == nullptr) {
-            MK_THROW(EvdnsBaseResolveReverseIpv6ExceptionError);
+            MK_THROW(EvdnsBaseResolveReverseIpv6Error);
         };
     };
 
     static void clear_nameservers_and_suspend(Var<EvdnsBase> base) {
         if (evdns_base_clear_nameservers_and_suspend(base->dns_base) != 0) {
-            MK_THROW(EvdnsBaseClearNameserversAndSuspendExceptionError);
+            MK_THROW(EvdnsBaseClearNameserversAndSuspendError);
         }
     }
 
     static unsigned count_nameservers(Var<EvdnsBase> base) {
         auto r = evdns_base_count_nameservers(base->dns_base);
         if (r < 0) {
-            MK_THROW(EvdnsBaseCountNameserversExceptionError);
+            MK_THROW(EvdnsBaseCountNameserversError);
         }
         return r;
     }
@@ -641,27 +641,27 @@ class EvdnsBase {
     static void add_nameserver(Var<EvdnsBase> base, std::string nameserver) {
         if (evdns_base_nameserver_ip_add(base->dns_base, nameserver.c_str()) !=
             0) {
-            MK_THROW(EvdnsBaseNameserverIpAddExceptionError);
+            MK_THROW(EvdnsBaseNameserverIpAddError);
         }
     }
 
     static void resume(Var<EvdnsBase> base) {
         if (evdns_base_resume(base->dns_base) != 0) {
-            MK_THROW(EvdnsBaseResumeExceptionError);
+            MK_THROW(EvdnsBaseResumeError);
         }
     }
 
     static void set_option_attempts(Var<EvdnsBase> base, unsigned count) {
         if (evdns_base_set_option(base->dns_base, "attempts",
                                   std::to_string(count).c_str()) != 0) {
-            MK_THROW(EvdnsBaseSetOptionExceptionError);
+            MK_THROW(EvdnsBaseSetOptionError);
         }
     }
 
     static void set_option_timeout(Var<EvdnsBase> base, double timeo) {
         if (evdns_base_set_option(base->dns_base, "timeout",
                                   std::to_string(timeo).c_str()) != 0) {
-            MK_THROW(EvdnsBaseSetOptionExceptionError);
+            MK_THROW(EvdnsBaseSetOptionError);
         }
     }
 
@@ -669,7 +669,7 @@ class EvdnsBase {
         int b = yesno;
         if (evdns_base_set_option(base->dns_base, "randomize-case",
                                   std::to_string(b).c_str()) != 0) {
-            MK_THROW(EvdnsBaseSetOptionExceptionError);
+            MK_THROW(EvdnsBaseSetOptionError);
         }
     }
 };
