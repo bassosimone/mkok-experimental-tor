@@ -478,14 +478,12 @@ template <decltype(evdns_base_new) construct = ::evdns_base_new,
 Var<evdns_base> evdns_base_new(Var<EventBase> base, bool initialize_nameservers = true,
                       bool fail_requests = true) {
     evdns_base *pointer = construct(base->evbase, initialize_nameservers);
-    std::cout << "Hey, I'm here: initializing" << std::endl;
     if (pointer == nullptr) {
         MK_THROW(EvdnsBaseNewError);
     }
     Var<evdns_base> b( pointer, [base, fail_requests](evdns_base *ptr) {
         destruct(ptr, fail_requests);
     });
-    std::cout << "Hey, I'm here: reurning " << std::endl;
     return b;
 }
 
