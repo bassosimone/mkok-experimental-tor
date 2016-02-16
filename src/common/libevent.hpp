@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <vector>
+#include <limits>
 
 // Forward declarations
 struct bufferevent;
@@ -557,8 +558,7 @@ class EvdnsBase {
         }
     }
 
-    static std::vector<std::string> ptr_address_list(int count,
-                                                     void *addresses) {
+    static std::vector<std::string> ptr_address_list(void *addresses) {
         std::vector<std::string> results;
         // Note: cast magic copied from libevent regress tests
         results.push_back(std::string(*(char **)addresses));
@@ -584,7 +584,7 @@ class EvdnsBase {
                                 int flags = DNS_QUERY_NO_SEARCH) {
         auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ptr_address_list(c, addresses));
+                callback(r, t, c, ttl, ptr_address_list(addresses));
             });
         in_addr na;
         if (evdns_base_resolve_reverse(base->dns_base, ipv4_pton(address, &na),
@@ -598,7 +598,7 @@ class EvdnsBase {
                                      int flags = DNS_QUERY_NO_SEARCH) {
         auto cb = new EvdnsCallback(
             [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ptr_address_list(c, addresses));
+                callback(r, t, c, ttl, ptr_address_list(addresses));
             });
         in6_addr na;
         if (evdns_base_resolve_reverse_ipv6(base->dns_base,
