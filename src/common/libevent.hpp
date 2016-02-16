@@ -475,13 +475,14 @@ typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
 
 template <decltype(evdns_base_new) construct = ::evdns_base_new,
           decltype(evdns_base_free) destruct = ::evdns_base_free>
-Var<evdns_base> evdns_base_new(Var<EventBase> base, bool initialize_nameservers = true,
-                      bool fail_requests = true) {
+Var<evdns_base> evdns_base_new(Var<EventBase> base,
+                               bool initialize_nameservers = true,
+                               bool fail_requests = true) {
     evdns_base *pointer = construct(base->evbase, initialize_nameservers);
     if (pointer == nullptr) {
         MK_THROW(EvdnsBaseNewError);
     }
-    Var<evdns_base> b( pointer, [base, fail_requests](evdns_base *ptr) {
+    Var<evdns_base> b(pointer, [base, fail_requests](evdns_base *ptr) {
         destruct(ptr, fail_requests);
     });
     return b;
@@ -513,7 +514,8 @@ std::vector<std::string> ip_address_list(int count, void *addresses,
 
 template <decltype(evdns_base_resolve_ipv4) resolve = ::evdns_base_resolve_ipv4>
 void evdns_base_resolve_ipv4(Var<evdns_base> base, std::string name,
-                  ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+                             ResolveCallback callback,
+                             int flags = DNS_QUERY_NO_SEARCH) {
     // callback viene tenuta viva in quanto viene copiata nello scope
     auto cb = new EvdnsCallback(
         [callback](int r, char t, int c, int ttl, void *addresses) {
@@ -527,7 +529,8 @@ void evdns_base_resolve_ipv4(Var<evdns_base> base, std::string name,
 
 template <decltype(evdns_base_resolve_ipv6) resolve = ::evdns_base_resolve_ipv6>
 void evdns_base_resolve_ipv6(Var<evdns_base> base, std::string name,
-                  ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+                             ResolveCallback callback,
+                             int flags = DNS_QUERY_NO_SEARCH) {
     auto cb = new EvdnsCallback(
         [callback](int r, char t, int c, int ttl, void *addresses) {
             callback(r, t, c, ttl, ip_address_list(c, addresses, false));
@@ -559,31 +562,34 @@ in6_addr *ipv6_pton(std::string address, in6_addr *netaddr) {
     return (netaddr);
 }
 
-template <decltype(evdns_base_resolve_reverse) resolve = ::evdns_base_resolve_reverse>
+template <
+    decltype(evdns_base_resolve_reverse) resolve = ::evdns_base_resolve_reverse>
 void evdns_base_resolve_reverse(Var<evdns_base> base, std::string address,
-                     ResolveCallback callback, int flags  = DNS_QUERY_NO_SEARCH) {
+                                ResolveCallback callback,
+                                int flags = DNS_QUERY_NO_SEARCH) {
     auto cb = new EvdnsCallback(
         [callback](int r, char t, int c, int ttl, void *addresses) {
             callback(r, t, c, ttl, ptr_address_list(addresses));
         });
     in_addr na;
-    if (resolve(base.get(), ipv4_pton(address, &na),
-                                   flags, handle_resolve, cb) == nullptr) {
+    if (resolve(base.get(), ipv4_pton(address, &na), flags, handle_resolve,
+                cb) == nullptr) {
         MK_THROW(EvdnsBaseResolveReverseIpv4Error);
     };
 };
 
-template <decltype(evdns_base_resolve_reverse_ipv6) resolve = ::evdns_base_resolve_reverse_ipv6>
+template <decltype(evdns_base_resolve_reverse_ipv6) resolve =
+              ::evdns_base_resolve_reverse_ipv6>
 void evdns_base_resolve_reverse_ipv6(Var<evdns_base> base, std::string address,
-                          ResolveCallback callback,
-                          int flags = DNS_QUERY_NO_SEARCH) {
+                                     ResolveCallback callback,
+                                     int flags = DNS_QUERY_NO_SEARCH) {
     auto cb = new EvdnsCallback(
         [callback](int r, char t, int c, int ttl, void *addresses) {
             callback(r, t, c, ttl, ptr_address_list(addresses));
         });
     in6_addr na;
-    if (resolve(base.get(), ipv6_pton(address, &na), 
-                                flags, handle_resolve, cb) == nullptr) {
+    if (resolve(base.get(), ipv6_pton(address, &na), flags, handle_resolve,
+                cb) == nullptr) {
         MK_THROW(EvdnsBaseResolveReverseIpv6Error);
     };
 };
@@ -602,7 +608,8 @@ unsigned evdns_base_count_nameservers(Var<evdns_base> base) {
     return r;
 }
 
-void evdns_base_nameserver_ip_add(Var<evdns_base> base, std::string nameserver) {
+void evdns_base_nameserver_ip_add(Var<evdns_base> base,
+                                  std::string nameserver) {
     if (evdns_base_nameserver_ip_add(base.get(), nameserver.c_str()) != 0) {
         MK_THROW(EvdnsBaseNameserverIpAddError);
     }
