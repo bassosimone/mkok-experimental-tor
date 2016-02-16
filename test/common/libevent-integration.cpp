@@ -96,9 +96,9 @@ TEST_CASE("event_base_once works") {
 
 TEST_CASE("Resolve ipv4 works") {
     Var<EventBase> evbase = EventBase::create();
-    Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase, true, true);
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
     REQUIRE(dnsbase != nullptr);
-    EvdnsBase::resolve_ipv4(dnsbase, "nexa.polito.it",
+    evdns_base_resolve_ipv4(dnsbase, "nexa.polito.it",
                             [evbase](int result, char type, int count, int ttl,
                                      std::vector<std::string> addresses) {
                                 REQUIRE(result == DNS_ERR_NONE);
@@ -107,11 +107,12 @@ TEST_CASE("Resolve ipv4 works") {
                             });
     event_base_dispatch(evbase->evbase);
 }
+
 TEST_CASE("Resolve ipv6 works") {
     Var<EventBase> evbase = EventBase::create();
-    Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase);
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
     REQUIRE(dnsbase != nullptr);
-    EvdnsBase::resolve_ipv6(
+    evdns_base_resolve_ipv6(
         dnsbase, "ooni.torproject.org",
         [evbase](int result, char type, int count, int ttl,
                  std::vector<std::string> addresses) {
@@ -126,9 +127,9 @@ TEST_CASE("Resolve ipv6 works") {
 
 TEST_CASE("Resolve ptr ipv4 works") {
     Var<EventBase> evbase = EventBase::create();
-    Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase);
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
     REQUIRE(dnsbase != nullptr);
-    EvdnsBase::resolve_reverse(
+    evdns_base_resolve_reverse(
         dnsbase, "130.192.16.172",
         [evbase](int result, char type, int count, int ttl,
                  std::vector<std::string> addresses) {
@@ -141,9 +142,9 @@ TEST_CASE("Resolve ptr ipv4 works") {
 
 TEST_CASE("Resolve ptr ipv6 works") {
     Var<EventBase> evbase = EventBase::create();
-    Var<EvdnsBase> dnsbase = EvdnsBase::create(evbase);
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
     REQUIRE(dnsbase != nullptr);
-    EvdnsBase::resolve_reverse_ipv6(
+    evdns_base_resolve_reverse_ipv6(
         dnsbase, "2620::6b0:b:1a1a:0:26e5:4810",
         [evbase](int result, char type, int count, int ttl,
                  std::vector<std::string> addresses) {

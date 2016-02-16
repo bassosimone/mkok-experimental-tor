@@ -54,8 +54,8 @@ void mk_libevent_bev_event(bufferevent *, short what, void *ptr) {
 
 void handle_resolve(int code, char type, int count, int ttl, void *addresses,
                     void *opaque) {
-    mk::EvdnsBase::EvdnsCallback *callback =
-        static_cast<mk::EvdnsBase::EvdnsCallback *>(opaque);
+    mk::EvdnsCallback *callback =
+        static_cast<mk::EvdnsCallback *>(opaque);
     (*callback)(code, type, count, ttl, addresses);
     delete callback;
 }

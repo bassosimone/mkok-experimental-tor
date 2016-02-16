@@ -25,7 +25,7 @@
 #include <sys/uio.h>
 #include <vector>
 #include <limits>
-
+#include <iostream>
 // Forward declarations
 struct bufferevent;
 struct evbuffer;
@@ -468,196 +468,175 @@ class Bufferevent : public NonCopyable, public NonMovable {
     }
 };
 
-class EvdnsBase {
-  public:
-    // Add a reference to Var<EventBase> base to make sure it is referenced
-    Var<EventBase> evbase = nullptr;
-    evdns_base *dns_base = nullptr;
+typedef struct evdns_base evdns_base;
+typedef std::function<void(int result, char type, int count, int ttl,
+                           std::vector<std::string> addresses)> ResolveCallback;
+typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
 
-    EvdnsBase() {}
-    ~EvdnsBase() {}
-
-    template <decltype(evdns_base_new) construct = ::evdns_base_new,
-              decltype(evdns_base_free) destruct = ::evdns_base_free>
-    static Var<EvdnsBase> create(Var<EventBase> base,
-                                 bool initialize_nameservers = true,
-                                 bool fail_requests = true) {
-
-        auto pointer = construct(base->evbase, initialize_nameservers);
-        if (pointer == nullptr) {
-            MK_THROW(EvdnsBaseNewError);
-        }
-        Var<EvdnsBase> evdns_base(new EvdnsBase,
-                                  [fail_requests](EvdnsBase *ptr) {
-                                      destruct(ptr->dns_base, fail_requests);
-                                      delete ptr;
-                                  });
-        evdns_base->evbase = base;
-        evdns_base->dns_base = pointer;
-        return evdns_base;
+template <decltype(evdns_base_new) construct = ::evdns_base_new,
+          decltype(evdns_base_free) destruct = ::evdns_base_free>
+Var<evdns_base> evdns_base_new(Var<EventBase> base, bool initialize_nameservers = true,
+                      bool fail_requests = true) {
+    evdns_base *pointer = construct(base->evbase, initialize_nameservers);
+    std::cout << "Hey, I'm here: initializing" << std::endl;
+    if (pointer == nullptr) {
+        MK_THROW(EvdnsBaseNewError);
     }
+    Var<evdns_base> b( pointer, [base, fail_requests](evdns_base *ptr) {
+        destruct(ptr, fail_requests);
+    });
+    std::cout << "Hey, I'm here: reurning " << std::endl;
+    return b;
+}
 
-    typedef std::function<void(int result, char type, int count, int ttl,
-                               std::vector<std::string> addresses)>
-        ResolveCallback;
-
-    static std::vector<std::string> ip_address_list(int count, void *addresses,
-                                                    bool ipv4) {
-        std::vector<std::string> results;
-        int size;
-        if (ipv4 == true) {
-            size = 4;
-        } else {
-            size = 16;
-        }
-        if (count >= 0 && count <= INT_MAX / size + 1) {
-            char string[128]; // Is wide enough (max. IPv6 length is 45 chars)
-            for (int i = 0; i < count; ++i) {
-                // Note: address already in network byte order
-                if (inet_ntop((ipv4 == true) ? AF_INET : AF_INET6,
-                              (char *)addresses + i * size, string,
-                              sizeof(string)) == nullptr) {
-                    break;
-                }
-                results.push_back(string);
+std::vector<std::string> ip_address_list(int count, void *addresses,
+                                         bool ipv4) {
+    std::vector<std::string> results;
+    int size;
+    if (ipv4 == true) {
+        size = 4;
+    } else {
+        size = 16;
+    }
+    if (count >= 0 && count <= INT_MAX / size + 1) {
+        char string[128]; // is wide enough (max. ipv6 length is 45 chars)
+        for (int i = 0; i < count; ++i) {
+            // note: address already in network byte order
+            if (inet_ntop((ipv4 == true) ? AF_INET : AF_INET6,
+                          (char *)addresses + i * size, string,
+                          sizeof(string)) == nullptr) {
+                break;
             }
-        }
-        return results;
-    }
-
-    typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
-
-    template <
-        decltype(evdns_base_resolve_ipv4) resolve = ::evdns_base_resolve_ipv4>
-    static void resolve_ipv4(Var<EvdnsBase> base, std::string name,
-                             ResolveCallback callback,
-                             int flags = DNS_QUERY_NO_SEARCH) {
-        // callback viene tenuta viva in quanto viene copiata nello scope
-        auto cb = new EvdnsCallback(
-            [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ip_address_list(c, addresses, true));
-            });
-        if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
-            nullptr) {
-            MK_THROW(EvdnsBaseResolveIpv4Error);
+            results.push_back(string);
         }
     }
+    return results;
+}
 
-    template <
-        decltype(evdns_base_resolve_ipv6) resolve = ::evdns_base_resolve_ipv6>
-    static void resolve_ipv6(Var<EvdnsBase> base, std::string name,
-                             ResolveCallback callback,
-                             int flags = DNS_QUERY_NO_SEARCH) {
-        auto cb = new EvdnsCallback(
-            [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ip_address_list(c, addresses, false));
-            });
-        if (resolve(base->dns_base, name.c_str(), flags, handle_resolve, cb) ==
-            nullptr) {
-            MK_THROW(EvdnsBaseResolveIpv6Error);
-        }
+template <decltype(evdns_base_resolve_ipv4) resolve = ::evdns_base_resolve_ipv4>
+void evdns_base_resolve_ipv4(Var<evdns_base> base, std::string name,
+                  ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+    // callback viene tenuta viva in quanto viene copiata nello scope
+    auto cb = new EvdnsCallback(
+        [callback](int r, char t, int c, int ttl, void *addresses) {
+            callback(r, t, c, ttl, ip_address_list(c, addresses, true));
+        });
+    if (resolve(base.get(), name.c_str(), flags, handle_resolve, cb) ==
+        nullptr) {
+        MK_THROW(EvdnsBaseResolveIpv4Error);
     }
+}
 
-    static std::vector<std::string> ptr_address_list(void *addresses) {
-        std::vector<std::string> results;
-        // Note: cast magic copied from libevent regress tests
-        results.push_back(std::string(*(char **)addresses));
-        return results;
+template <decltype(evdns_base_resolve_ipv6) resolve = ::evdns_base_resolve_ipv6>
+void evdns_base_resolve_ipv6(Var<evdns_base> base, std::string name,
+                  ResolveCallback callback, int flags = DNS_QUERY_NO_SEARCH) {
+    auto cb = new EvdnsCallback(
+        [callback](int r, char t, int c, int ttl, void *addresses) {
+            callback(r, t, c, ttl, ip_address_list(c, addresses, false));
+        });
+    if (resolve(base.get(), name.c_str(), flags, handle_resolve, cb) ==
+        nullptr) {
+        MK_THROW(EvdnsBaseResolveIpv6Error);
     }
+}
 
-    static in_addr *ipv4_pton(std::string address, in_addr *netaddr) {
-        if (inet_pton(AF_INET, address.c_str(), netaddr) != 1) {
-            throw InvalidIPv4AddressError();
-        }
-        return (netaddr);
+std::vector<std::string> ptr_address_list(void *addresses) {
+    std::vector<std::string> results;
+    // Note: cast magic copied from libevent regress tests
+    results.push_back(std::string(*(char **)addresses));
+    return results;
+}
+
+in_addr *ipv4_pton(std::string address, in_addr *netaddr) {
+    if (inet_pton(AF_INET, address.c_str(), netaddr) != 1) {
+        throw InvalidIPv4AddressError();
     }
+    return (netaddr);
+}
 
-    static in6_addr *ipv6_pton(std::string address, in6_addr *netaddr) {
-        if (inet_pton(AF_INET6, address.c_str(), netaddr) != 1) {
-            throw InvalidIPv6AddressError();
-        }
-        return (netaddr);
+in6_addr *ipv6_pton(std::string address, in6_addr *netaddr) {
+    if (inet_pton(AF_INET6, address.c_str(), netaddr) != 1) {
+        throw InvalidIPv6AddressError();
     }
+    return (netaddr);
+}
 
-    static void resolve_reverse(Var<EvdnsBase> base, std::string address,
-                                ResolveCallback callback,
-                                int flags = DNS_QUERY_NO_SEARCH) {
-        auto cb = new EvdnsCallback(
-            [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ptr_address_list(addresses));
-            });
-        in_addr na;
-        if (evdns_base_resolve_reverse(base->dns_base, ipv4_pton(address, &na),
-                                       flags, handle_resolve, cb) == nullptr) {
-            MK_THROW(EvdnsBaseResolveReverseIpv4Error);
-        };
+template <decltype(evdns_base_resolve_reverse) resolve = ::evdns_base_resolve_reverse>
+void evdns_base_resolve_reverse(Var<evdns_base> base, std::string address,
+                     ResolveCallback callback, int flags  = DNS_QUERY_NO_SEARCH) {
+    auto cb = new EvdnsCallback(
+        [callback](int r, char t, int c, int ttl, void *addresses) {
+            callback(r, t, c, ttl, ptr_address_list(addresses));
+        });
+    in_addr na;
+    if (resolve(base.get(), ipv4_pton(address, &na),
+                                   flags, handle_resolve, cb) == nullptr) {
+        MK_THROW(EvdnsBaseResolveReverseIpv4Error);
     };
-
-    static void resolve_reverse_ipv6(Var<EvdnsBase> base, std::string address,
-                                     ResolveCallback callback,
-                                     int flags = DNS_QUERY_NO_SEARCH) {
-        auto cb = new EvdnsCallback(
-            [callback](int r, char t, int c, int ttl, void *addresses) {
-                callback(r, t, c, ttl, ptr_address_list(addresses));
-            });
-        in6_addr na;
-        if (evdns_base_resolve_reverse_ipv6(base->dns_base,
-                                            ipv6_pton(address, &na), flags,
-                                            handle_resolve, cb) == nullptr) {
-            MK_THROW(EvdnsBaseResolveReverseIpv6Error);
-        };
-    };
-
-    static void clear_nameservers_and_suspend(Var<EvdnsBase> base) {
-        if (evdns_base_clear_nameservers_and_suspend(base->dns_base) != 0) {
-            MK_THROW(EvdnsBaseClearNameserversAndSuspendError);
-        }
-    }
-
-    static unsigned count_nameservers(Var<EvdnsBase> base) {
-        auto r = evdns_base_count_nameservers(base->dns_base);
-        if (r < 0) {
-            MK_THROW(EvdnsBaseCountNameserversError);
-        }
-        return r;
-    }
-
-    static void add_nameserver(Var<EvdnsBase> base, std::string nameserver) {
-        if (evdns_base_nameserver_ip_add(base->dns_base, nameserver.c_str()) !=
-            0) {
-            MK_THROW(EvdnsBaseNameserverIpAddError);
-        }
-    }
-
-    static void resume(Var<EvdnsBase> base) {
-        if (evdns_base_resume(base->dns_base) != 0) {
-            MK_THROW(EvdnsBaseResumeError);
-        }
-    }
-
-    static void set_option_attempts(Var<EvdnsBase> base, unsigned count) {
-        if (evdns_base_set_option(base->dns_base, "attempts",
-                                  std::to_string(count).c_str()) != 0) {
-            MK_THROW(EvdnsBaseSetOptionError);
-        }
-    }
-
-    static void set_option_timeout(Var<EvdnsBase> base, double timeo) {
-        if (evdns_base_set_option(base->dns_base, "timeout",
-                                  std::to_string(timeo).c_str()) != 0) {
-            MK_THROW(EvdnsBaseSetOptionError);
-        }
-    }
-
-    static void set_option_randomize_case(Var<EvdnsBase> base, bool yesno) {
-        int b = yesno;
-        if (evdns_base_set_option(base->dns_base, "randomize-case",
-                                  std::to_string(b).c_str()) != 0) {
-            MK_THROW(EvdnsBaseSetOptionError);
-        }
-    }
 };
 
-} // namespace
+template <decltype(evdns_base_resolve_reverse_ipv6) resolve = ::evdns_base_resolve_reverse_ipv6>
+void evdns_base_resolve_reverse_ipv6(Var<evdns_base> base, std::string address,
+                          ResolveCallback callback,
+                          int flags = DNS_QUERY_NO_SEARCH) {
+    auto cb = new EvdnsCallback(
+        [callback](int r, char t, int c, int ttl, void *addresses) {
+            callback(r, t, c, ttl, ptr_address_list(addresses));
+        });
+    in6_addr na;
+    if (resolve(base.get(), ipv6_pton(address, &na), 
+                                flags, handle_resolve, cb) == nullptr) {
+        MK_THROW(EvdnsBaseResolveReverseIpv6Error);
+    };
+};
+
+void evdns_base_clear_nameservers_and_suspend(Var<evdns_base> base) {
+    if (evdns_base_clear_nameservers_and_suspend(base.get()) != 0) {
+        MK_THROW(EvdnsBaseClearNameserversAndSuspendError);
+    }
+}
+
+unsigned evdns_base_count_nameservers(Var<evdns_base> base) {
+    auto r = evdns_base_count_nameservers(base.get());
+    if (r < 0) {
+        MK_THROW(EvdnsBaseCountNameserversError);
+    }
+    return r;
+}
+
+void evdns_base_nameserver_ip_add(Var<evdns_base> base, std::string nameserver) {
+    if (evdns_base_nameserver_ip_add(base.get(), nameserver.c_str()) != 0) {
+        MK_THROW(EvdnsBaseNameserverIpAddError);
+    }
+}
+
+void evdns_base_resume(Var<evdns_base> base) {
+    if (evdns_base_resume(base.get()) != 0) {
+        MK_THROW(EvdnsBaseResumeError);
+    }
+}
+
+void evdns_base_set_option_attempts(Var<evdns_base> base, unsigned count) {
+    if (evdns_base_set_option(base.get(), "attempts",
+                              std::to_string(count).c_str()) != 0) {
+        MK_THROW(EvdnsBaseSetOptionError);
+    }
+}
+
+void evdns_base_set_option_timeout(Var<evdns_base> base, double timeo) {
+    if (evdns_base_set_option(base.get(), "timeout",
+                              std::to_string(timeo).c_str()) != 0) {
+        MK_THROW(EvdnsBaseSetOptionError);
+    }
+}
+
+void evdns_base_set_option_randomize_case(Var<evdns_base> base, bool yesno) {
+    int b = yesno;
+    if (evdns_base_set_option(base.get(), "randomize-case",
+                              std::to_string(b).c_str()) != 0) {
+        MK_THROW(EvdnsBaseSetOptionError);
+    }
+}
+} // namespace mk
 
 #endif
