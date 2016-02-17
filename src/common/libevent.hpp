@@ -24,7 +24,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <vector>
-#include <limits>
+#include <climits>
 #include <iostream>
 // Forward declarations
 struct bufferevent;
