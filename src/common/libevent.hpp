@@ -472,6 +472,8 @@ typedef struct evdns_base evdns_base;
 typedef std::function<void(int result, char type, int count, int ttl,
                            std::vector<std::string> addresses)> ResolveCallback;
 typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
+std::vector<std::string> ip_address_list(int count, void *addresses,
+                                         bool ipv4);
 
 template <decltype(evdns_base_new) construct = ::evdns_base_new,
           decltype(evdns_base_free) destruct = ::evdns_base_free>
@@ -541,21 +543,21 @@ void evdns_base_resolve_ipv6(Var<evdns_base> base, std::string name,
     }
 }
 
-std::vector<std::string> ptr_address_list(void *addresses) {
+inline std::vector<std::string> ptr_address_list(void *addresses) {
     std::vector<std::string> results;
     // Note: cast magic copied from libevent regress tests
     results.push_back(std::string(*(char **)addresses));
     return results;
 }
 
-in_addr *ipv4_pton(std::string address, in_addr *netaddr) {
+inline in_addr *ipv4_pton(std::string address, in_addr *netaddr) {
     if (inet_pton(AF_INET, address.c_str(), netaddr) != 1) {
         throw InvalidIPv4AddressError();
     }
     return (netaddr);
 }
 
-in6_addr *ipv6_pton(std::string address, in6_addr *netaddr) {
+inline in6_addr *ipv6_pton(std::string address, in6_addr *netaddr) {
     if (inet_pton(AF_INET6, address.c_str(), netaddr) != 1) {
         throw InvalidIPv6AddressError();
     }
@@ -594,13 +596,13 @@ void evdns_base_resolve_reverse_ipv6(Var<evdns_base> base, std::string address,
     };
 };
 
-void evdns_base_clear_nameservers_and_suspend(Var<evdns_base> base) {
+inline void evdns_base_clear_nameservers_and_suspend(Var<evdns_base> base) {
     if (evdns_base_clear_nameservers_and_suspend(base.get()) != 0) {
         MK_THROW(EvdnsBaseClearNameserversAndSuspendError);
     }
 }
 
-unsigned evdns_base_count_nameservers(Var<evdns_base> base) {
+inline unsigned evdns_base_count_nameservers(Var<evdns_base> base) {
     auto r = evdns_base_count_nameservers(base.get());
     if (r < 0) {
         MK_THROW(EvdnsBaseCountNameserversError);
@@ -608,34 +610,34 @@ unsigned evdns_base_count_nameservers(Var<evdns_base> base) {
     return r;
 }
 
-void evdns_base_nameserver_ip_add(Var<evdns_base> base,
+inline void evdns_base_nameserver_ip_add(Var<evdns_base> base,
                                   std::string nameserver) {
     if (evdns_base_nameserver_ip_add(base.get(), nameserver.c_str()) != 0) {
         MK_THROW(EvdnsBaseNameserverIpAddError);
     }
 }
 
-void evdns_base_resume(Var<evdns_base> base) {
+inline void evdns_base_resume(Var<evdns_base> base) {
     if (evdns_base_resume(base.get()) != 0) {
         MK_THROW(EvdnsBaseResumeError);
     }
 }
 
-void evdns_base_set_option_attempts(Var<evdns_base> base, unsigned count) {
+inline void evdns_base_set_option_attempts(Var<evdns_base> base, unsigned count) {
     if (evdns_base_set_option(base.get(), "attempts",
                               std::to_string(count).c_str()) != 0) {
         MK_THROW(EvdnsBaseSetOptionError);
     }
 }
 
-void evdns_base_set_option_timeout(Var<evdns_base> base, double timeo) {
+inline void evdns_base_set_option_timeout(Var<evdns_base> base, double timeo) {
     if (evdns_base_set_option(base.get(), "timeout",
                               std::to_string(timeo).c_str()) != 0) {
         MK_THROW(EvdnsBaseSetOptionError);
     }
 }
 
-void evdns_base_set_option_randomize_case(Var<evdns_base> base, bool yesno) {
+inline void evdns_base_set_option_randomize_case(Var<evdns_base> base, bool yesno) {
     int b = yesno;
     if (evdns_base_set_option(base.get(), "randomize-case",
                               std::to_string(b).c_str()) != 0) {
