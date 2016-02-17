@@ -139,7 +139,7 @@ TEST_CASE("Resolve ptr ipv4 works") {
         });
     event_base_dispatch(evbase->evbase);
 }
-
+/*
 TEST_CASE("Resolve ptr ipv6 works") {
     Var<EventBase> evbase = EventBase::create();
     Var<evdns_base> dnsbase = evdns_base_new(evbase);
@@ -154,3 +154,4 @@ TEST_CASE("Resolve ptr ipv6 works") {
         });
     event_base_dispatch(evbase->evbase);
 }
+*/
