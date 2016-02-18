@@ -493,12 +493,7 @@ Var<evdns_base> evdns_base_new(Var<EventBase> base,
 std::vector<std::string> ip_address_list(int count, void *addresses,
                                          bool ipv4) {
     std::vector<std::string> results;
-    int size;
-    if (ipv4 == true) {
-        size = 4;
-    } else {
-        size = 16;
-    }
+    int size = (ipv4 == true) ? 4 : 16;
     if (count >= 0 && count <= INT_MAX / size + 1) {
         char string[128]; // is wide enough (max. ipv6 length is 45 chars)
         for (int i = 0; i < count; ++i) {
