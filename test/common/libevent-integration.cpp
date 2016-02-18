@@ -117,9 +117,10 @@ TEST_CASE("Resolve ipv6 works") {
         [evbase](int result, char type, int count, int ttl,
                  std::vector<std::string> addresses) {
             REQUIRE(result == DNS_ERR_NONE);
-            REQUIRE(std::find(addresses.begin(), addresses.end(),
-                              "2620::6b0:b:1a1a:0:26e5:4810") !=
-                    addresses.end());
+            REQUIRE((std::find(addresses.begin(), addresses.end(),
+                      "2620::6b0:b:1a1a:0:26e5:4810") != addresses.end()) or
+                    (std::find(addresses.begin(), addresses.end(),
+                      "2620:0:6b0:b:1a1a:0:26e5:4810") != addresses.end()));
             event_base_loopbreak(evbase->evbase);
         });
     event_base_dispatch(evbase->evbase);
@@ -139,7 +140,7 @@ TEST_CASE("Resolve ptr ipv4 works") {
         });
     event_base_dispatch(evbase->evbase);
 }
-/*
+
 TEST_CASE("Resolve ptr ipv6 works") {
     Var<EventBase> evbase = EventBase::create();
     Var<evdns_base> dnsbase = evdns_base_new(evbase);
@@ -154,4 +155,3 @@ TEST_CASE("Resolve ptr ipv6 works") {
         });
     event_base_dispatch(evbase->evbase);
 }
-*/

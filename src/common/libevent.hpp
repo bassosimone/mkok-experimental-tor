@@ -508,9 +508,10 @@ std::vector<std::string> ip_address_list(int count, void *addresses,
                           sizeof(string)) == nullptr) {
                 break;
             }
+            std::cout << string << std::endl;
             results.push_back(string);
         }
-    }
+    } 
     return results;
 }
 
