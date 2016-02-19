@@ -25,6 +25,7 @@ matrix:
            GCOV=gcov-5
            MKOK_CXX=g++-5
            CXXFLAGS=-g
+    allow_failures:
     - os: osx
       compiler: clang++
 
