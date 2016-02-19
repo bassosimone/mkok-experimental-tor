@@ -27,6 +27,9 @@ matrix:
            CXXFLAGS=-g
     - os: osx
       compiler: clang++
+      env: OS=OSX
+  allow_failures:
+    - env: OS=OSX
 
 addons:
   apt:
@@ -53,7 +56,6 @@ script:
     else
       make check V=0;
     fi
-
 after_script:
   - if [ "$GCOV" != "" ]; then
       coveralls --gcov $(which $GCOV) --gcov-options '\-lp'

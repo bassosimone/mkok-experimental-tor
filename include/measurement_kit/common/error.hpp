@@ -51,9 +51,9 @@ class Error : public std::exception {
 };
 
 #define MK_DECLARE_ERROR(code, name, ooni_error)                               \
-    class name##Error : public Error {                                         \
+    class name : public Error {                                                \
       public:                                                                  \
-        name##Error() : Error(code, ooni_error) {}                             \
+        name() : Error(code, ooni_error) {}                                      \
     }
 
 #define MK_THROW(classname)                                                    \
@@ -65,40 +65,57 @@ class Error : public std::exception {
         throw error;                                                           \
     } while (0)
 
-MK_DECLARE_ERROR(0, No, "");
-MK_DECLARE_ERROR(1, Generic, "");
-MK_DECLARE_ERROR(2, MaybeNotInitialized, "");
-MK_DECLARE_ERROR(3, NullPointer, "");
-MK_DECLARE_ERROR(4, MallocFailed, "");
+MK_DECLARE_ERROR(0, NoError, "");
+MK_DECLARE_ERROR(1, GenericError, "");
+MK_DECLARE_ERROR(2, MaybeNotInitializedError, "");
+MK_DECLARE_ERROR(3, NullPointerError, "");
+MK_DECLARE_ERROR(4, MallocFailedError, "");
 
-MK_DECLARE_ERROR(5, EvutilMakeSocketNonblocking, "");
-MK_DECLARE_ERROR(6, EvutilParseSockaddrPort, "");
-MK_DECLARE_ERROR(7, EvutilMakeListenSocketReuseable, "");
+MK_DECLARE_ERROR(5, EvutilMakeSocketNonblockingError, "");
+MK_DECLARE_ERROR(6, EvutilParseSockaddrPortError, "");
+MK_DECLARE_ERROR(7, EvutilMakeListenSocketReuseableError, "");
 
-MK_DECLARE_ERROR(8, EventBaseDispatch, "");
-MK_DECLARE_ERROR(9, EventBaseLoop, "");
-MK_DECLARE_ERROR(10, EventBaseLoopbreak, "");
-MK_DECLARE_ERROR(11, EventBaseOnce, "");
+MK_DECLARE_ERROR(8, EventBaseDispatchError, "");
+MK_DECLARE_ERROR(9, EventBaseLoopError, "");
+MK_DECLARE_ERROR(10, EventBaseLoopbreakError, "");
+MK_DECLARE_ERROR(11, EventBaseOnceError, "");
 
-MK_DECLARE_ERROR(12, BuffereventSocketNew, "");
-MK_DECLARE_ERROR(13, BuffereventSocketConnect, "");
-MK_DECLARE_ERROR(14, BuffereventWrite, "");
-MK_DECLARE_ERROR(15, BuffereventWriteBuffer, "");
-MK_DECLARE_ERROR(16, BuffereventReadBuffer, "");
-MK_DECLARE_ERROR(17, BuffereventEnable, "");
-MK_DECLARE_ERROR(18, BuffereventDisable, "");
-MK_DECLARE_ERROR(19, BuffereventSetTimeouts, "");
-MK_DECLARE_ERROR(20, BuffereventOpensslFilterNew, "");
+MK_DECLARE_ERROR(12, BuffereventSocketNewError, "");
+MK_DECLARE_ERROR(13, BuffereventSocketConnectError, "");
+MK_DECLARE_ERROR(14, BuffereventWriteError, "");
+MK_DECLARE_ERROR(15, BuffereventWriteBufferError, "");
+MK_DECLARE_ERROR(16, BuffereventReadBufferError, "");
+MK_DECLARE_ERROR(17, BuffereventEnableError, "");
+MK_DECLARE_ERROR(18, BuffereventDisableError, "");
+MK_DECLARE_ERROR(19, BuffereventSetTimeoutsError, "");
+MK_DECLARE_ERROR(20, BuffereventOpensslFilterNewError, "");
 
-MK_DECLARE_ERROR(21, EvbufferAdd, "");
-MK_DECLARE_ERROR(22, EvbufferAddBuffer, "");
-MK_DECLARE_ERROR(23, EvbufferPeek, "");
-MK_DECLARE_ERROR(24, EvbufferPeekMismatch, "");
-MK_DECLARE_ERROR(25, EvbufferDrain, "");
-MK_DECLARE_ERROR(26, EvbufferRemoveBuffer, "");
-MK_DECLARE_ERROR(27, EvbufferPullup, "");
+MK_DECLARE_ERROR(21, EvbufferAddError, "");
+MK_DECLARE_ERROR(22, EvbufferAddBufferError, "");
+MK_DECLARE_ERROR(23, EvbufferPeekError, "");
+MK_DECLARE_ERROR(24, EvbufferPeekMismatchError, "");
+MK_DECLARE_ERROR(25, EvbufferDrainError, "");
+MK_DECLARE_ERROR(26, EvbufferRemoveBufferError, "");
+MK_DECLARE_ERROR(27, EvbufferPullupError, "");
 
-MK_DECLARE_ERROR(28, Type, "");
+MK_DECLARE_ERROR(28, EvdnsBaseNewError, "");
+MK_DECLARE_ERROR(29, EvdnsBaseResolveIpv4Error, "");
+MK_DECLARE_ERROR(30, EvdnsBaseResolveIpv6Error, "");
+MK_DECLARE_ERROR(31, EvdnsBaseResolveReverseIpv4Error, "");
+MK_DECLARE_ERROR(32, EvdnsBaseResolveReverseIpv6Error, "");
+MK_DECLARE_ERROR(33, InvalidIPv4AddressError, "");
+MK_DECLARE_ERROR(34, InvalidIPv6AddressError, "");
+MK_DECLARE_ERROR(35, EvdnsBaseClearNameserversAndSuspendError, "");
+
+MK_DECLARE_ERROR(37, EvdnsBaseCountNameserversError, "");
+MK_DECLARE_ERROR(38, EvdnsBaseNameserverIpAddError, "");
+MK_DECLARE_ERROR(39, EvdnsBaseResumeError, "");
+MK_DECLARE_ERROR(40, EvdnsBaseSetOptionError, "");
+
+MK_DECLARE_ERROR(41, HttpParserUpgradeError, "");
+MK_DECLARE_ERROR(42, HttpParserGenericParseError, "");
+
+MK_DECLARE_ERROR(42, TypeError, "");
 
 } // namespace mk
 #endif

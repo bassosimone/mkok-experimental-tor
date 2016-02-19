@@ -93,3 +93,66 @@ TEST_CASE("event_base_once works") {
     evbase->dispatch();
     REQUIRE(called == true);
 }
+
+TEST_CASE("Resolve ipv4 works") {
+    Var<EventBase> evbase = EventBase::create();
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
+    REQUIRE(dnsbase != nullptr);
+    evdns_base_resolve_ipv4(dnsbase, "nexa.polito.it",
+                            [evbase](int result, char type, int count, int ttl,
+                                     std::vector<std::string> addresses) {
+                                REQUIRE(result == DNS_ERR_NONE);
+                                REQUIRE(addresses[0] == "130.192.16.172");
+                                event_base_loopbreak(evbase->evbase);
+                            });
+    event_base_dispatch(evbase->evbase);
+}
+
+TEST_CASE("Resolve ipv6 works") {
+    Var<EventBase> evbase = EventBase::create();
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
+    REQUIRE(dnsbase != nullptr);
+    evdns_base_resolve_ipv6(
+        dnsbase, "ooni.torproject.org",
+        [evbase](int result, char type, int count, int ttl,
+                 std::vector<std::string> addresses) {
+            REQUIRE(result == DNS_ERR_NONE);
+            bool found =((std::find(addresses.begin(), addresses.end(),
+                      "2620::6b0:b:1a1a:0:26e5:4810") != addresses.end()) or
+                    (std::find(addresses.begin(), addresses.end(),
+                      "2620:0:6b0:b:1a1a:0:26e5:4810") != addresses.end()));
+            REQUIRE(found == true);
+            event_base_loopbreak(evbase->evbase);
+        });
+    event_base_dispatch(evbase->evbase);
+}
+
+TEST_CASE("Resolve ptr ipv4 works") {
+    Var<EventBase> evbase = EventBase::create();
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
+    REQUIRE(dnsbase != nullptr);
+    evdns_base_resolve_reverse(
+        dnsbase, "130.192.16.172",
+        [evbase](int result, char type, int count, int ttl,
+                 std::vector<std::string> addresses) {
+            REQUIRE(result == DNS_ERR_NONE);
+            REQUIRE(addresses[0] == "server-nexa.polito.it");
+            event_base_loopbreak(evbase->evbase);
+        });
+    event_base_dispatch(evbase->evbase);
+}
+
+TEST_CASE("Resolve ptr ipv6 works") {
+    Var<EventBase> evbase = EventBase::create();
+    Var<evdns_base> dnsbase = evdns_base_new(evbase);
+    REQUIRE(dnsbase != nullptr);
+    evdns_base_resolve_reverse_ipv6(
+        dnsbase, "2620::6b0:b:1a1a:0:26e5:4810",
+        [evbase](int result, char type, int count, int ttl,
+                 std::vector<std::string> addresses) {
+            REQUIRE(result == DNS_ERR_NONE);
+            REQUIRE(addresses[0] == "aroides.torproject.org");
+            event_base_loopbreak(evbase->evbase);
+        });
+    event_base_dispatch(evbase->evbase);
+}
