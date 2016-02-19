@@ -29,7 +29,7 @@ matrix:
       compiler: clang++
       env: OS=OSX
   allow_failures:
-    - env: TRAVIS_OS_NAME=OSX
+    - env: OS=OSX
 
 addons:
   apt:
