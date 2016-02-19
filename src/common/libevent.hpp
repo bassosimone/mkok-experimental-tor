@@ -472,8 +472,6 @@ typedef struct evdns_base evdns_base;
 typedef std::function<void(int result, char type, int count, int ttl,
                            std::vector<std::string> addresses)> ResolveCallback;
 typedef std::function<void(int, char, int, int, void *)> EvdnsCallback;
-std::vector<std::string> ip_address_list(int count, void *addresses,
-                                         bool ipv4);
 
 template <decltype(evdns_base_new) construct = ::evdns_base_new,
           decltype(evdns_base_free) destruct = ::evdns_base_free>
@@ -490,7 +488,7 @@ Var<evdns_base> evdns_base_new(Var<EventBase> base,
     return b;
 }
 
-std::vector<std::string> ip_address_list(int count, void *addresses,
+inline std::vector<std::string> ip_address_list(int count, void *addresses,
                                          bool ipv4) {
     std::vector<std::string> results;
     int size = (ipv4 == true) ? 4 : 16;
