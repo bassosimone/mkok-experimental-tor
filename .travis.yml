@@ -53,7 +53,6 @@ script:
     else
       make check V=0;
     fi
-  - cat test-suite.log
 after_script:
   - if [ "$GCOV" != "" ]; then
       coveralls --gcov $(which $GCOV) --gcov-options '\-lp'
